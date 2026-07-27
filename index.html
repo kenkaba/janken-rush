@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no,maximum-scale=1">
+<meta name="theme-color" content="#05060f">
+<title>JANKEN RUSH</title>
+<style>
+/* ============================================================
+   JANKEN RUSH — prototype v0.2
+   ============================================================ */
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;background:#05060f;overscroll-behavior:none;touch-action:manipulation}
+body{
+  font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  font-weight:800;color:#fff;user-select:none;-webkit-user-select:none;
+}
+#app{position:fixed;inset:0;overflow:hidden;will-change:transform}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#bg{z-index:0}
+#fx{z-index:40;pointer-events:none}
+
+.vignette{position:absolute;inset:0;z-index:30;pointer-events:none;
+  background:radial-gradient(ellipse 80% 64% at 50% 44%,transparent 40%,rgba(0,0,0,.48) 86%,rgba(0,0,0,.82) 100%)}
+.scan{position:absolute;inset:0;z-index:31;pointer-events:none;opacity:.13;mix-blend-mode:overlay;
+  background:repeating-linear-gradient(0deg,rgba(255,255,255,.10) 0 1px,transparent 1px 3px)}
+.grain{position:absolute;inset:-50%;z-index:32;pointer-events:none;opacity:.04;
+  background-image:radial-gradient(circle,#fff 1px,transparent 1px);background-size:3px 3px;
+  animation:grain 1.1s steps(4) infinite}
+@keyframes grain{0%{transform:translate(0,0)}25%{transform:translate(-2%,1%)}50%{transform:translate(1%,-2%)}75%{transform:translate(-1%,-1%)}100%{transform:translate(0,0)}}
+#tintFlash{position:absolute;inset:0;z-index:45;pointer-events:none;opacity:0;mix-blend-mode:screen}
+
+/* ---------- layout ---------- */
+#ui{position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;
+  padding:calc(env(safe-area-inset-top) + 104px) 14px calc(env(safe-area-inset-bottom) + 10px)}
+
+/* HUDは暗転演出より前面。連勝数は決着の瞬間こそ読ませる。 */
+#topbar{position:absolute;top:0;left:0;right:0;z-index:34;pointer-events:none;
+  padding:calc(env(safe-area-inset-top) + 8px) 14px 0;transition:opacity .3s}
+/* タイトル/リザルト中は盤面を伏せる。背景の街だけを残す。 */
+body.menu #topbar,body.menu #ui{opacity:0}
+#ui{transition:opacity .3s}
+#hud{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex:0 0 auto}
+.streakBox{position:relative;padding:6px 0 0 2px}
+.streakNum{font-size:60px;line-height:1;padding-right:6px;letter-spacing:-3px;font-style:italic;font-weight:900;
+  background:linear-gradient(178deg,#ffffff 6%,#ffe89a 40%,#ffb400 68%,#ff5e18 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 0 16px var(--accGlow,rgba(255,180,0,.8))) drop-shadow(0 2px 0 rgba(0,0,0,.75))}
+.streakNum.pop{animation:numPop .42s cubic-bezier(.2,1.8,.35,1)}
+@keyframes numPop{0%{transform:scale(1)}30%{transform:scale(1.55) rotate(-5deg)}100%{transform:scale(1)}}
+.streakLbl{font-size:10px;letter-spacing:6px;color:#b9c8ee;margin-top:1px;text-shadow:0 0 10px rgba(90,140,255,.8),0 1px 2px #000}
+.hudRight{text-align:right;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+.badge{font-size:10px;letter-spacing:2px;padding:5px 10px;border-radius:3px;
+  border:1px solid rgba(255,255,255,.24);background:rgba(8,12,30,.6);backdrop-filter:blur(6px);color:#cfdcff}
+.badge b{color:#ffd45e;font-size:12px}
+#stageName{font-size:12px;letter-spacing:3px;padding:6px 12px;border-radius:3px;
+  border:1px solid var(--acc,#4d7cff);color:#fff;background:rgba(10,14,36,.62);
+  box-shadow:0 0 18px var(--accGlow,rgba(77,124,255,.5)) inset,0 0 14px var(--accGlow,rgba(77,124,255,.4));
+  transition:.4s}
+
+/* 期待度メーター */
+#tension{margin-top:8px;height:4px;border-radius:2px;background:rgba(255,255,255,.09);overflow:hidden;flex:0 0 auto;
+  position:relative;box-shadow:inset 0 0 6px rgba(0,0,0,.7)}
+#tensionFill{position:absolute;inset:0 100% 0 0;background:var(--tc,#00e5ff);
+  box-shadow:0 0 14px var(--tc,#00e5ff);transition:right .45s cubic-bezier(.2,1.3,.4,1),background .3s}
+#tensionLbl{position:absolute;right:0;top:8px;font-size:10px;letter-spacing:3px;color:var(--tc,#00e5ff);
+  opacity:0;text-shadow:0 0 10px currentColor;transition:opacity .3s}
+#tensionLbl.on{opacity:1}
+
+/* ---------- enemy ---------- */
+#arena{flex:1 1 auto;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:0}
+#enemyWrap{position:relative;display:flex;flex-direction:column;align-items:center;gap:8px}
+#enemy{position:relative;width:min(50vw,208px);aspect-ratio:1/1;display:grid;place-items:center;
+  animation:breathe 2.6s ease-in-out infinite}
+@keyframes breathe{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-7px) scale(1.035)}}
+.enemyGlow{position:absolute;inset:-26%;border-radius:50%;
+  background:radial-gradient(circle,var(--ec,#ff3b5c) 0%,transparent 62%);opacity:.4;filter:blur(16px);
+  animation:pulse 2.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.3;transform:scale(1)}50%{opacity:.62;transform:scale(1.12)}}
+.enemyBody{position:relative;width:82%;height:82%;border-radius:46% 46% 40% 40%/52% 52% 44% 44%;
+  background:
+    radial-gradient(circle at 32% 24%,rgba(255,255,255,.42),transparent 46%),
+    linear-gradient(158deg,var(--ec,#ff3b5c) 0%,color-mix(in srgb,var(--ec,#ff3b5c) 45%,#120324) 46%,#0a0316 100%);
+  border:2px solid rgba(255,255,255,.34);
+  box-shadow:0 0 44px var(--ec,#ff3b5c),inset 0 -20px 40px rgba(0,0,0,.7),
+    inset 0 14px 30px rgba(255,255,255,.2),inset 0 0 0 1px rgba(255,255,255,.1)}
+.enemyBody::after{content:"";position:absolute;left:12%;right:12%;bottom:9%;height:16%;border-radius:50%;
+  background:radial-gradient(ellipse,var(--ec,#ff3b5c),transparent 68%);opacity:.55;filter:blur(5px)}
+.visor{position:absolute;top:29%;left:5%;right:5%;height:24%;z-index:1;
+  background:linear-gradient(180deg,rgba(3,1,10,.95),rgba(3,1,10,.55));
+  clip-path:polygon(7% 0,93% 0,100% 58%,50% 100%,0 58%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.22)}
+.horn{position:absolute;top:-4%;width:17%;height:27%;z-index:1;
+  background:linear-gradient(180deg,#ffffff,var(--ec,#ff3b5c) 70%);
+  clip-path:polygon(50% 0,100% 100%,0 100%);filter:drop-shadow(0 0 10px var(--ec,#ff3b5c))}
+.horn.l{left:8%;transform:rotate(-22deg)}
+.horn.r{right:8%;transform:rotate(22deg)}
+.eyes{position:absolute;top:36%;left:0;right:0;display:flex;justify-content:center;gap:13%;z-index:2}
+.eye{position:relative;width:21%;padding-bottom:9.5%;background:#fff;
+  box-shadow:0 0 14px var(--eyeC,#fff),0 0 34px var(--eyeC,#fff);
+  clip-path:polygon(0 0,100% 32%,100% 100%,0 64%);
+  animation:blink 4.4s infinite;transition:background .3s,box-shadow .3s,transform .3s}
+.eye:last-child{clip-path:polygon(0 32%,100% 0,100% 64%,0 100%)}
+@keyframes blink{0%,94%,100%{transform:scaleY(1)}96%{transform:scaleY(.08)}}
+#enemy.hot .eye{transform:scaleY(.66)}
+.mouth{position:absolute;top:62%;left:50%;transform:translateX(-50%);width:32%;height:7%;z-index:2;
+  background:#06010e;
+  clip-path:polygon(0 0,100% 0,100% 34%,87% 100%,74% 34%,61% 100%,48% 34%,35% 100%,22% 34%,10% 100%,0 34%)}
+#enemy.hot{animation:breathe 1s ease-in-out infinite}
+#enemy.hot .enemyGlow{animation:pulse .9s ease-in-out infinite}
+.orbit{position:absolute;inset:-8%;pointer-events:none;animation:auraSpin 9s linear infinite}
+.orbit i{position:absolute;top:0;left:50%;width:9px;height:9px;margin-left:-4.5px;border-radius:2px;
+  background:var(--ec,#ff3b5c);box-shadow:0 0 12px var(--ec,#ff3b5c);transform:rotate(45deg)}
+.orbit i:nth-child(2){top:auto;bottom:0}
+.orbit i:nth-child(3){top:50%;left:0;margin-top:-4.5px}
+.orbit i:nth-child(4){top:50%;left:auto;right:0;margin-top:-4.5px}
+
+/* 決着中は敵の名札・セリフを消して、結果テキストと重ならせない */
+#enemyName,#enemyHp,#enemyTell{transition:opacity .18s}
+body.battling #enemyName,body.battling #enemyHp,body.battling #enemyTell{opacity:0}
+#enemyName{font-size:13px;letter-spacing:3px;color:#fff;text-shadow:0 0 12px var(--ec,#ff3b5c),0 2px 3px rgba(0,0,0,.9)}
+#enemyHp{display:flex;gap:5px}
+#enemyHp i{width:22px;height:4px;border-radius:2px;background:rgba(255,255,255,.16);transition:.3s}
+#enemyHp i.on{background:var(--ec,#ff3b5c);box-shadow:0 0 10px var(--ec,#ff3b5c)}
+#enemyTell{font-size:12px;font-weight:700;letter-spacing:.5px;color:#e6eeff;
+  background:rgba(6,10,26,.78);border:1px solid rgba(255,255,255,.2);border-radius:14px;
+  padding:6px 14px;backdrop-filter:blur(5px);max-width:84vw;text-align:center;
+  box-shadow:0 4px 20px rgba(0,0,0,.6);transition:.25s}
+#enemyTell.hit{border-color:#ffd45e;color:#ffe9a8;box-shadow:0 0 24px rgba(255,212,94,.55)}
+
+#foreAura{position:absolute;inset:-16%;border-radius:50%;pointer-events:none;opacity:0;
+  border:3px solid var(--fc,#00e5ff);
+  box-shadow:0 0 44px var(--fc,#00e5ff),inset 0 0 44px var(--fc,#00e5ff)}
+#foreAura.on{opacity:.9;animation:auraSpin 2.4s linear infinite,auraBeat .8s ease-in-out infinite}
+@keyframes auraSpin{to{transform:rotate(360deg)}}
+@keyframes auraBeat{0%,100%{filter:brightness(1)}50%{filter:brightness(2)}}
+
+/* ---------- reveal ---------- */
+/* 決着中は盤面を暗転させ、手・VS・結果だけを読ませる */
+#battleScrim{position:absolute;inset:0;z-index:24;opacity:0;pointer-events:none;
+  background:radial-gradient(ellipse at 50% 42%,rgba(2,4,14,.62),rgba(2,4,14,.93) 78%);
+  transition:opacity .2s}
+#battleScrim.on{opacity:1}
+#reveal{position:absolute;inset:0;pointer-events:none;z-index:26}
+.handSlot{position:absolute;width:min(38vw,158px);opacity:0}
+.handSlot.e{right:7vw;top:11%}
+.handSlot.p{left:7vw;top:34%}
+.handSlot.show{animation:slam .34s cubic-bezier(.15,1.6,.4,1) forwards}
+@keyframes slam{0%{opacity:0;transform:scale(2.1) rotate(-14deg)}60%{opacity:1;transform:scale(.92) rotate(3deg)}100%{opacity:1;transform:scale(1) rotate(0)}}
+.handSVG{width:100%;height:auto;display:block}
+.handSVG .ho{fill:#fff;stroke:#fff;stroke-width:10;stroke-linejoin:round;stroke-linecap:round}
+.handSVG .hf{fill:currentColor}
+.handSVG .hl{fill:#fff;opacity:.30}
+.handSVG .hd{fill:none;stroke:rgba(0,0,0,.34);stroke-width:5;stroke-linecap:round}
+.handSlot{filter:drop-shadow(0 0 16px currentColor) drop-shadow(0 0 42px currentColor) drop-shadow(0 6px 2px rgba(0,0,0,.6))}
+#vsMark{position:absolute;left:0;right:0;top:26%;text-align:center;
+  font-size:clamp(46px,15vw,92px);font-style:italic;font-weight:900;letter-spacing:-4px;
+  color:#fff;opacity:0;text-shadow:0 0 26px #ff2d3f,0 0 60px #ff2d3f,0 4px 0 rgba(0,0,0,.6)}
+#vsMark.show{animation:vsIn .5s cubic-bezier(.2,1.6,.3,1) forwards}
+@keyframes vsIn{0%{opacity:0;transform:scale(3) rotate(-20deg)}70%{opacity:1;transform:scale(.9) rotate(4deg)}100%{opacity:1;transform:scale(1) rotate(-6deg)}}
+
+/* ---------- center ---------- */
+#center{position:absolute;inset:0;pointer-events:none;z-index:28}
+#bigText{position:absolute;left:0;right:0;top:56%;
+  font-size:clamp(40px,13vw,84px);font-style:italic;font-weight:900;letter-spacing:-1px;
+  text-align:center;line-height:.95;opacity:0;white-space:pre-line;
+  text-shadow:0 4px 16px rgba(0,0,0,.85),0 0 40px rgba(0,0,0,.6)}
+#bigText.in{animation:bigIn .38s cubic-bezier(.15,1.7,.35,1) forwards}
+#bigText.out{animation:bigOut .22s ease-in forwards}
+@keyframes bigIn{0%{opacity:0;transform:scale(2.6) rotate(-8deg);filter:blur(8px)}
+  70%{opacity:1;transform:scale(.92) rotate(2deg);filter:blur(0)}100%{opacity:1;transform:scale(1) rotate(-2deg)}}
+@keyframes bigOut{to{opacity:0;transform:scale(1.25);filter:blur(6px)}}
+#subText{position:absolute;left:0;right:0;top:71%;text-align:center;
+  font-size:17px;letter-spacing:5px;opacity:0;color:#fff;
+  text-shadow:0 0 14px currentColor,0 2px 6px #000}
+#subText.in{animation:subIn .3s ease-out forwards}
+@keyframes subIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+#count{position:absolute;left:0;right:0;top:30%;text-align:center;
+  font-size:clamp(80px,26vw,180px);font-style:italic;font-weight:900;
+  color:#fff;opacity:0;text-shadow:0 0 30px #4d7cff,0 0 70px #4d7cff}
+#count.tick{animation:cnt .56s cubic-bezier(.2,1.3,.4,1) forwards}
+@keyframes cnt{0%{opacity:0;transform:scale(2.4);filter:blur(10px)}
+  35%{opacity:1;transform:scale(1);filter:blur(0)}75%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(.7)}}
+
+/* ---------- controls ---------- */
+#controls{flex:0 0 auto;display:flex;gap:12px;justify-content:center;align-items:flex-end;
+  padding:26px 4px 6px;margin:0 -14px;position:relative;
+  transition:opacity .25s,transform .3s}
+#controls::before{content:"";position:absolute;left:0;right:0;bottom:-60px;top:-16px;
+  background:linear-gradient(0deg,rgba(2,3,10,.96) 30%,rgba(2,3,10,.74) 62%,transparent);pointer-events:none}
+#controls .hbtn{z-index:1}
+#controls.locked{opacity:.16;transform:translateY(20px) scale(.93);pointer-events:none;filter:grayscale(.75)}
+.hbtn{position:relative;flex:1 1 0;max-width:112px;border:none;background:none;cursor:pointer;padding:0;
+  display:flex;flex-direction:column;align-items:center;gap:7px;
+  font-family:inherit;animation:float 3.2s ease-in-out infinite}
+.hbtn:nth-child(2){animation-delay:-1.05s}.hbtn:nth-child(3){animation-delay:-2.1s}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.hbtn .disc{position:relative;width:100%;aspect-ratio:1/1;display:grid;place-items:center}
+.hbtn .ring{position:absolute;inset:0;border-radius:50%;border:2px solid currentColor;
+  box-shadow:0 0 24px currentColor,inset 0 0 30px rgba(255,255,255,.16);
+  background:radial-gradient(circle at 50% 28%,rgba(255,255,255,.2),rgba(4,6,18,.92) 70%)}
+.hbtn .ring::after{content:"";position:absolute;inset:-8px;border-radius:50%;border:1px solid currentColor;
+  opacity:.35;animation:ringPulse 2.2s ease-out infinite}
+@keyframes ringPulse{0%{transform:scale(.94);opacity:.55}100%{transform:scale(1.24);opacity:0}}
+.hbtn .ic{position:relative;width:60%;color:currentColor;filter:drop-shadow(0 0 12px currentColor)}
+.hbtn .nm{font-size:11px;letter-spacing:3px;color:#fff;opacity:.9;text-shadow:0 1px 3px #000}
+.hbtn:active .disc{transform:scale(.9)}
+.hbtn.rock{color:#ff2d3f}.hbtn.scissors{color:#00d4ff}.hbtn.paper{color:#ffb400}
+.hbtn.weak .ring{box-shadow:0 0 34px #ffd45e,inset 0 0 30px rgba(255,212,94,.3);border-color:#ffd45e}
+
+/* ---------- cut in ---------- */
+#cutin{position:absolute;inset:0;z-index:50;pointer-events:none;opacity:0;display:grid;place-items:center;overflow:hidden}
+#cutin.on{opacity:1}
+.cutBand{position:absolute;left:-12%;right:-12%;height:36%;transform:skewY(-7deg);
+  background:linear-gradient(90deg,transparent,var(--cc,#ffb400) 16%,#fff 50%,var(--cc,#ffb400) 84%,transparent);
+  opacity:.94}
+#cutin.on .cutBand{animation:bandIn .5s cubic-bezier(.2,1.4,.3,1) forwards}
+@keyframes bandIn{0%{transform:skewY(-7deg) translateX(-120%) scaleY(.2)}55%,100%{transform:skewY(-7deg) translateX(0) scaleY(1)}}
+.cutText{position:relative;font-size:clamp(38px,13vw,86px);font-weight:900;font-style:italic;letter-spacing:6px;
+  color:#12030a;text-shadow:0 0 20px #fff,3px 3px 0 #fff}
+#cutin.on .cutText{animation:cutT .5s cubic-bezier(.2,1.6,.3,1) forwards}
+@keyframes cutT{0%{opacity:0;transform:scale(2.4) rotate(-12deg)}60%{opacity:1;transform:scale(.95)}100%{opacity:1;transform:scale(1) rotate(-3deg)}}
+
+#yakumono{position:absolute;left:50%;top:-60%;z-index:48;width:min(74vw,320px);transform:translateX(-50%);
+  opacity:0;pointer-events:none;color:#ffd45e;filter:drop-shadow(0 0 30px #ffb400) drop-shadow(0 0 70px #ff7a18)}
+#yakumono.drop{animation:yaku 1.15s cubic-bezier(.5,0,.75,0) forwards}
+@keyframes yaku{0%{opacity:0;top:-60%;transform:translateX(-50%) scale(.6) rotate(-8deg)}
+  12%{opacity:1}62%{top:26%;transform:translateX(-50%) scale(1.12) rotate(2deg)}
+  72%{top:22%;transform:translateX(-50%) scale(1.02)}100%{opacity:1;top:24%;transform:translateX(-50%) scale(1.06)}}
+
+#freeze{position:absolute;inset:0;z-index:55;pointer-events:none;opacity:0;
+  background:radial-gradient(circle at 50% 45%,rgba(210,240,255,.28),rgba(2,6,20,.88) 70%);
+  backdrop-filter:saturate(.12) contrast(1.4) brightness(1.2)}
+#freeze.on{opacity:1}
+#freeze svg{position:absolute;inset:0;width:100%;height:100%}
+#freeze .crk{stroke:#eaf7ff;stroke-width:2.2;fill:none;filter:drop-shadow(0 0 8px #9fe4ff);
+  stroke-dasharray:600;stroke-dashoffset:600;animation:crack .5s ease-out forwards}
+@keyframes crack{to{stroke-dashoffset:0}}
+#freezeTxt{position:absolute;inset:0;display:grid;place-items:center;font-size:clamp(30px,10vw,62px);
+  letter-spacing:12px;font-style:italic;color:#eaf9ff;text-shadow:0 0 24px #7fdcff,0 0 60px #2fa8ff;opacity:0}
+#freeze.on #freezeTxt{animation:subIn .4s .25s forwards}
+
+.rbText{background:linear-gradient(92deg,#ff2d6f,#ffb400,#7cff4d,#00d4ff,#a45cff,#ff2d6f);
+  background-size:300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;
+  animation:rb 1.1s linear infinite;filter:drop-shadow(0 0 18px rgba(255,255,255,.9))}
+@keyframes rb{to{background-position:300% 0}}
+
+#stageUp{position:absolute;inset:0;z-index:52;display:grid;place-items:center;pointer-events:none;opacity:0}
+#stageUp.on{animation:suIn 1.5s forwards}
+@keyframes suIn{0%{opacity:0}12%,78%{opacity:1}100%{opacity:0}}
+#stageUp .band{position:absolute;left:0;right:0;height:30%;
+  background:linear-gradient(90deg,transparent,rgba(0,0,0,.9) 12%,rgba(0,0,0,.9) 88%,transparent)}
+#stageUp .t1{position:relative;font-size:11px;letter-spacing:9px;color:#ffd45e;margin-bottom:8px}
+#stageUp .t2{position:relative;font-size:clamp(30px,10vw,60px);font-style:italic;letter-spacing:2px}
+#stageUp .inner{position:relative;display:flex;flex-direction:column;align-items:center}
+#stageUp.on .inner{animation:bigIn .5s cubic-bezier(.15,1.6,.35,1) forwards}
+
+/* ---------- screens ---------- */
+.screen{position:absolute;inset:0;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:20px;padding:26px;background:radial-gradient(ellipse at 50% 42%,rgba(8,14,40,.48),rgba(2,3,10,.88) 74%)}
+.screen.hidden{display:none}
+.logo{font-size:clamp(38px,12.5vw,74px);font-style:italic;font-weight:900;letter-spacing:1px;line-height:.9;text-align:center}
+.logoSub{font-size:11px;letter-spacing:9px;color:#9fb4e8;margin-top:10px;text-align:center}
+.tagline{font-size:13px;letter-spacing:1px;color:#d3dfff;text-align:center;line-height:2;font-weight:700;
+  text-shadow:0 2px 8px #000}
+.cta{position:relative;margin-top:4px;padding:16px 40px;border:none;border-radius:4px;cursor:pointer;
+  font-family:inherit;font-weight:900;font-size:15px;letter-spacing:4px;color:#1a0d00;white-space:nowrap;
+  background:linear-gradient(180deg,#ffe89a,#ffb400 55%,#ff7a18);
+  box-shadow:0 0 30px rgba(255,180,0,.65),0 6px 0 #8a4400,inset 0 1px 0 rgba(255,255,255,.6);
+  animation:ctaP 1.5s ease-in-out infinite}
+@keyframes ctaP{0%,100%{transform:translateY(0);box-shadow:0 0 26px rgba(255,180,0,.55),0 6px 0 #8a4400}
+  50%{transform:translateY(-3px);box-shadow:0 0 48px rgba(255,180,0,.9),0 9px 0 #8a4400}}
+.cta:active{transform:translateY(4px);box-shadow:0 0 20px rgba(255,180,0,.5),0 2px 0 #8a4400}
+.resStat{display:flex;gap:30px;align-items:flex-end}
+.rs{text-align:center}
+.rs .v{font-size:52px;font-style:italic;line-height:1;
+  background:linear-gradient(178deg,#fff,#ffd45e 60%,#ff7a18);-webkit-background-clip:text;background-clip:text;color:transparent}
+.rs .k{font-size:10px;letter-spacing:4px;color:#9fb4e8;margin-top:6px}
+.regret{font-size:13px;letter-spacing:1px;color:#ffb0c6;text-align:center;line-height:1.8;
+  border-top:1px solid rgba(255,255,255,.16);border-bottom:1px solid rgba(255,255,255,.16);padding:12px 18px}
+.hint{font-size:11px;letter-spacing:2px;color:#7e8fbd;text-align:center;line-height:2}
+#heat{position:absolute;left:0;right:0;bottom:0;height:28%;z-index:5;pointer-events:none;opacity:0;
+  background:linear-gradient(0deg,var(--acc,#ffb400),transparent);mix-blend-mode:screen;transition:opacity .6s}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <clipPath id="topClip" clipPathUnits="userSpaceOnUse"><rect x="0" y="0" width="160" height="74"/></clipPath>
+</defs></svg>
+
+<div id="app">
+  <canvas id="bg"></canvas>
+  <div id="heat"></div>
+
+  <div id="topbar">
+    <div id="hud">
+      <div class="streakBox">
+        <div class="streakNum" id="streakNum">0</div>
+        <div class="streakLbl">連 勝</div>
+      </div>
+      <div class="hudRight">
+        <div id="stageName">通常ステージ</div>
+        <div class="badge">BEST <b id="bestNum">0</b></div>
+      </div>
+    </div>
+    <div id="tension"><div id="tensionFill"></div></div>
+    <div style="position:relative;height:0"><div id="tensionLbl"></div></div>
+  </div>
+
+  <div id="ui">
+    <div id="arena">
+      <div id="enemyWrap">
+        <div id="enemy">
+          <div class="enemyGlow"></div>
+          <div id="foreAura"></div>
+          <div class="orbit"><i></i><i></i><i></i><i></i></div>
+          <div class="enemyBody">
+            <div class="horn l"></div><div class="horn r"></div>
+            <div class="visor"></div>
+            <div class="eyes"><div class="eye"></div><div class="eye"></div></div>
+            <div class="mouth"></div>
+          </div>
+        </div>
+        <div id="enemyName">—</div>
+        <div id="enemyHp"><i></i><i></i><i></i></div>
+        <div id="enemyTell">—</div>
+      </div>
+    </div>
+
+    <div id="controls">
+      <button class="hbtn rock" data-h="rock"><div class="disc"><div class="ring"></div><div class="ic"></div></div><div class="nm">グー</div></button>
+      <button class="hbtn scissors" data-h="scissors"><div class="disc"><div class="ring"></div><div class="ic"></div></div><div class="nm">チョキ</div></button>
+      <button class="hbtn paper" data-h="paper"><div class="disc"><div class="ring"></div><div class="ic"></div></div><div class="nm">パー</div></button>
+    </div>
+  </div>
+
+  <div id="battleScrim"></div>
+  <div id="reveal">
+    <div class="handSlot e" id="handE"></div>
+    <div class="handSlot p" id="handP"></div>
+    <div id="vsMark">VS</div>
+  </div>
+
+  <div id="center">
+    <div id="bigText"></div>
+    <div id="subText"></div>
+    <div id="count"></div>
+  </div>
+
+  <div id="yakumono"></div>
+  <div id="cutin"><div class="cutBand"></div><div class="cutText">神 手</div></div>
+  <div id="freeze">
+    <svg viewBox="0 0 400 800" preserveAspectRatio="none"><g id="cracks"></g></svg>
+    <div id="freezeTxt">FREEZE</div>
+  </div>
+  <div id="stageUp">
+    <div class="band"></div>
+    <div class="inner"><div class="t1">STAGE UP</div><div class="t2" id="stageUpName"></div></div>
+  </div>
+
+  <canvas id="fx"></canvas>
+  <div class="vignette"></div>
+  <div class="scan"></div>
+  <div class="grain"></div>
+  <div id="tintFlash"></div>
+
+  <div class="screen" id="titleScreen">
+    <div>
+      <div class="logo"><span class="rbText">JANKEN</span><br><span style="color:#fff;text-shadow:0 0 34px #ff2d3f,0 4px 0 rgba(0,0,0,.5)">RUSH</span></div>
+      <div class="logoSub">ジャンケンラッシュ</div>
+    </div>
+    <div class="tagline">ジャンケンを、ここまでアツく。<br>ルールは世界一シンプル。体験は世界一派手。</div>
+    <button class="cta" id="startBtn">TAP TO START</button>
+    <div class="hint">連勝するほどステージが進化する<br>敵のセリフを読んで勝てば 演出が格上げ</div>
+  </div>
+
+  <div class="screen hidden" id="resultScreen">
+    <div class="logo" style="font-size:clamp(26px,8.5vw,48px);color:#fff">連勝ストップ</div>
+    <div class="resStat">
+      <div class="rs"><div class="v" id="rStreak">0</div><div class="k">STREAK</div></div>
+      <div class="rs"><div class="v" id="rBest">0</div><div class="k">BEST</div></div>
+    </div>
+    <div class="regret" id="regret"></div>
+    <button class="cta" id="retryBtn">RETRY</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ===================== utils ===================== */
+const $=s=>document.querySelector(s);
+const rnd=(a=1,b=0)=>b+Math.random()*(a-b);
+const ri=(a,b)=>Math.floor(rnd(b+1,a));
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+let SPEED=1;                              // 演出チューニング / 検証用の時間倍率
+const wait=ms=>new Promise(r=>setTimeout(r,ms*SPEED));
+function wpick(list){let t=0;for(const l of list)t+=l[1];let r=Math.random()*t;
+  for(const l of list){r-=l[1];if(r<=0)return l[0];}return list[list.length-1][0];}
+function buzz(p){if(navigator.vibrate)try{navigator.vibrate(p);}catch(e){}}
+
+/* ===================== AUDIO (fully synthesized) ===================== */
+const Snd={
+  ctx:null,master:null,ok:false,
+  init(){ if(this.ctx)return; const AC=window.AudioContext||window.webkitAudioContext; if(!AC)return;
+    this.ctx=new AC(); this.master=this.ctx.createGain(); this.master.gain.value=.5;
+    this.master.connect(this.ctx.destination); this.ok=true;
+    if(this.ctx.state==='suspended') this.ctx.resume(); },
+  now(){return this.ctx.currentTime},
+  tone({f=440,t=0,d=.18,type='sine',v=.3,f2=null}){
+    if(!this.ok)return; const c=this.ctx,o=c.createOscillator(),g=c.createGain(),T=this.now()+t;
+    o.type=type; o.frequency.setValueAtTime(f,T);
+    if(f2)o.frequency.exponentialRampToValueAtTime(Math.max(1,f2),T+d);
+    g.gain.setValueAtTime(0,T); g.gain.linearRampToValueAtTime(v,T+.008);
+    g.gain.exponentialRampToValueAtTime(.0001,T+d);
+    o.connect(g);g.connect(this.master);o.start(T);o.stop(T+d+.03);},
+  noise({t=0,d=.2,v=.3,hp=200,lp=6000}){
+    if(!this.ok)return; const c=this.ctx,len=Math.max(1,Math.floor(c.sampleRate*d));
+    const b=c.createBuffer(1,len,c.sampleRate),ch=b.getChannelData(0);
+    for(let i=0;i<len;i++)ch[i]=(Math.random()*2-1)*(1-i/len);
+    const s=c.createBufferSource();s.buffer=b;
+    const hpf=c.createBiquadFilter();hpf.type='highpass';hpf.frequency.value=hp;
+    const lpf=c.createBiquadFilter();lpf.type='lowpass';lpf.frequency.value=lp;
+    const g=c.createGain(),T=this.now()+t;
+    g.gain.setValueAtTime(v,T);g.gain.exponentialRampToValueAtTime(.0001,T+d);
+    s.connect(hpf);hpf.connect(lpf);lpf.connect(g);g.connect(this.master);s.start(T);},
+  ui(){this.tone({f:900,d:.05,type:'square',v:.12});this.tone({f:1400,t:.03,d:.06,type:'square',v:.08});},
+  lock(){this.tone({f:180,f2:60,d:.22,type:'sawtooth',v:.28});this.noise({d:.12,v:.2,hp:900});},
+  tick(i,tier){const f=[520,660,880][i]||880;const m=1+tier*.06;
+    this.tone({f:f*m,d:.14,type:'square',v:.22});this.tone({f:f*2*m,d:.1,type:'sine',v:.1});},
+  impact(){this.tone({f:150,f2:38,d:.42,type:'sine',v:.5});this.noise({d:.3,v:.34,hp:120,lp:3500});},
+  win(n){const base=440*Math.pow(1.0595,Math.min(n,14));
+    [0,4,7,12].forEach((s,i)=>this.tone({f:base*Math.pow(1.0595,s),t:i*.055,d:.4,type:'triangle',v:.26}));
+    this.noise({d:.5,v:.16,hp:2200});},
+  lose(){this.tone({f:300,f2:70,d:.7,type:'sawtooth',v:.26});this.tone({f:150,f2:40,d:.9,type:'sine',v:.2});},
+  charge(d=.7){this.tone({f:120,f2:1500,d,type:'sawtooth',v:.2});this.noise({d,v:.1,hp:400});},
+  confirm(){for(let i=0;i<10;i++)this.tone({f:520*Math.pow(1.16,i),t:i*.045,d:.3,type:'square',v:.2});
+    this.tone({f:80,f2:40,d:.9,type:'sine',v:.4});},
+  pseudo(i){this.tone({f:300+i*90,f2:900+i*120,d:.28,type:'sawtooth',v:.3});this.noise({d:.2,v:.24,hp:500});},
+  freeze(){this.tone({f:900,f2:30,d:1.1,type:'sine',v:.4});this.noise({d:.14,v:.4,hp:3000});},
+  stageUp(){[0,5,7,12,17].forEach((s,i)=>this.tone({f:330*Math.pow(1.0595,s),t:i*.07,d:.55,type:'triangle',v:.24}));this.impact();},
+  read(){this.tone({f:1200,d:.14,type:'square',v:.16});this.tone({f:1800,t:.08,d:.16,type:'square',v:.12});},
+  defeat(){[0,3,7,10,12].forEach((s,i)=>this.tone({f:262*Math.pow(1.0595,s),t:i*.06,d:.6,type:'sawtooth',v:.2}));this.impact();},
+};
+
+/* ===================== HAND ICONS (original) =====================
+   図形ごとに白フチが出ないよう「太いストローク＋塗り」の2パスで
+   union のシルエットだけを縁取る。 */
+const HAND_SHAPES={
+  rock:`<rect x="26" y="54" width="108" height="78" rx="34"/>
+        <rect x="34" y="44" width="30" height="34" rx="15"/>
+        <rect x="62" y="40" width="32" height="36" rx="16"/>
+        <rect x="92" y="44" width="30" height="34" rx="15"/>
+        <rect x="112" y="56" width="26" height="30" rx="13"/>
+        <rect x="14" y="76" width="40" height="30" rx="15"/>`,
+  scissors:`<rect x="36" y="78" width="94" height="56" rx="27"/>
+        <rect x="42" y="16" width="27" height="80" rx="13.5" transform="rotate(-17 55.5 56)"/>
+        <rect x="84" y="14" width="27" height="82" rx="13.5" transform="rotate(15 97.5 55)"/>
+        <rect x="104" y="76" width="28" height="30" rx="14"/>
+        <rect x="20" y="92" width="38" height="28" rx="14"/>`,
+  paper:`<rect x="40" y="66" width="88" height="66" rx="30"/>
+        <rect x="44" y="18" width="24" height="70" rx="12" transform="rotate(-13 56 53)"/>
+        <rect x="68" y="10" width="24" height="78" rx="12" transform="rotate(-4 80 49)"/>
+        <rect x="92" y="14" width="24" height="74" rx="12" transform="rotate(6 104 51)"/>
+        <rect x="112" y="26" width="23" height="62" rx="11.5" transform="rotate(16 123.5 57)"/>
+        <rect x="16" y="80" width="42" height="27" rx="13.5" transform="rotate(-22 37 93.5)"/>`
+};
+/* 内側のしわ線。これが無いとグーが「雲」や「肉球」に見える。 */
+const HAND_DETAIL={
+  rock:`<path d="M60 60 L60 82"/><path d="M88 57 L88 81"/><path d="M114 63 L114 84"/>
+        <path d="M54 82 L54 106"/>`,
+  scissors:`<path d="M74 76 L80 98"/>`,
+  paper:`<path d="M60 46 L62 82"/><path d="M82 38 L82 80"/><path d="M103 44 L101 82"/>
+        <path d="M58 88 L54 106"/>`
+};
+function handSVG(t){
+  const s=HAND_SHAPES[t]||HAND_SHAPES.rock;
+  const d=HAND_DETAIL[t]||'';
+  return `<svg class="handSVG" viewBox="0 0 160 160" aria-hidden="true">
+    <g class="ho">${s}</g><g class="hf">${s}</g>
+    <g class="hl" clip-path="url(#topClip)">${s}</g>
+    <g class="hd">${d}</g></svg>`;
+}
+const HAND_COLOR={rock:'#ff2d3f',scissors:'#00d4ff',paper:'#ffb400'};
+const HAND_JP={rock:'グー',scissors:'チョキ',paper:'パー'};
+const BEATS={rock:'scissors',scissors:'paper',paper:'rock'};
+const LOSES_TO={rock:'paper',scissors:'rock',paper:'scissors'};
+
+/* ===================== STAGES ===================== */
+const STAGES=[
+ {n:'通常ステージ',   min:0,  sky:['#03050f','#0b1738','#1e3b7d'], acc:'#5b8cff', city:'#01020a', rain:.55,pil:0, heat:0},
+ {n:'兆しステージ',   min:3,  sky:['#08031a','#200d4f','#6a2a9c'], acc:'#b060ff', city:'#04010f', rain:.75,pil:1, heat:.10},
+ {n:'擬似連ステージ', min:4,  sky:['#10021f','#42076b','#b81ec0'], acc:'#ff4dff', city:'#070113', rain:1.0, pil:2, heat:.18},
+ {n:'RUSHステージ',   min:5,  sky:['#140500','#5c1f00','#e0700f'], acc:'#ffb400', city:'#0d0300', rain:.35,pil:3, heat:.30},
+ {n:'神域ステージ',   min:10, sky:['#140d00','#5c4300','#f0c33a'], acc:'#ffd700', city:'#0d0800', rain:.20,pil:6, heat:.44},
+ {n:'超神域ステージ', min:15, sky:['#18000a','#63001f','#e01f5c'], acc:'#ff2d6f', city:'#0d0004', rain:1.3, pil:8, heat:.62, rb:true}
+];
+function stageFor(s){let r=STAGES[0];for(const st of STAGES)if(s>=st.min)r=st;return r;}
+
+/* ===================== ENEMIES ===================== */
+const ENEMIES=[
+ {n:'ゴリ押し型',  c:'#ff3b2f', lean:'rock',     tells:['グーで押し切る！','力こそすべてだ！','正面から潰す！']},
+ {n:'フェイント型',c:'#8a5cff', lean:'scissors', tells:['チョキで刻んでやる','その手は見えてるぞ','惑わせてやる']},
+ {n:'学習型AI',    c:'#00d4ff', lean:'paper',    tells:['パーで包囲する。','解析完了。','確率で勝つ']},
+ {n:'コピー型',    c:'#c0c8d8', lean:null,       tells:['同じ手を返す','鏡を見ているようだ','真似させてもらう']},
+ {n:'狂乱型',      c:'#ff2d6f', lean:null,       tells:['アハハ！何でもいい！','予測不能！','運命に聞け！']},
+];
+
+/* ===================== BACKGROUND ===================== */
+const BG={
+  cv:null,c:null,w:0,h:0,dpr:1,t:0,layers:[],stage:null,rain:[],embers:[],pillars:[],frozen:false,speed:1,
+  init(){this.cv=$('#bg');this.c=this.cv.getContext('2d');this.resize();addEventListener('resize',()=>this.resize());},
+  resize(){
+    this.dpr=Math.min(devicePixelRatio||1,2);
+    this.w=innerWidth||375; this.h=innerHeight||812;
+    this.cv.width=Math.max(1,this.w*this.dpr); this.cv.height=Math.max(1,this.h*this.dpr);
+    this.c.setTransform(this.dpr,0,0,this.dpr,0,0);
+    if(this.stage)this.buildCity(this.stage);
+    this.rain=[];for(let i=0;i<170;i++)this.rain.push({x:rnd(this.w),y:rnd(this.h),v:rnd(16,7),l:rnd(28,12)});
+    this.embers=[];for(let i=0;i<56;i++)this.embers.push({x:rnd(this.w),y:rnd(this.h),v:rnd(.8,.15),s:rnd(2.6,.7),p:rnd(6.28)});
+  },
+  setStage(st){this.stage=st;this.buildCity(st);
+    this.pillars=[];for(let i=0;i<st.pil;i++)this.pillars.push({x:rnd(this.w),w:rnd(80,26),p:rnd(6.28),s:rnd(1.7,.5)});},
+  buildCity(st){
+    this.layers=[];
+    const cfg=[{h:.40,a:.60,sc:.06,bw:[40,96],lit:.24},{h:.31,a:.82,sc:.14,bw:[28,66],lit:.30},{h:.21,a:1,sc:.28,bw:[20,46],lit:.36}];
+    cfg.forEach((L,li)=>{
+      const w=Math.ceil(Math.max(2,this.w)*2),h=Math.ceil(Math.max(2,this.h)*L.h)+40;
+      const o=document.createElement('canvas'); o.width=Math.max(1,w*this.dpr); o.height=Math.max(1,h*this.dpr);
+      const g=o.getContext('2d'); g.setTransform(this.dpr,0,0,this.dpr,0,0);
+      let x=-20;
+      while(x<w+40){
+        const bw=rnd(L.bw[1],L.bw[0]),bh=rnd(h*.95,h*.32);
+        g.globalAlpha=L.a; g.fillStyle=st.city; g.fillRect(x,h-bh,bw,bh);
+        // 屋上のリムライト
+        g.fillStyle=st.acc; g.globalAlpha=L.a*.5; g.fillRect(x,h-bh,bw,1.6);
+        g.globalAlpha=L.a;
+        const cols=Math.max(1,Math.floor(bw/9)),rows=Math.max(1,Math.floor(bh/12));
+        for(let cx=0;cx<cols;cx++)for(let cy=0;cy<rows;cy++){
+          if(Math.random()>L.lit)continue;
+          g.fillStyle=Math.random()<.24?st.acc:'rgba(200,222,255,.9)';
+          g.fillRect(x+4+cx*9,h-bh+6+cy*12,3.2,4.6);
+        }
+        if(Math.random()<.3){g.fillStyle=st.acc;g.globalAlpha=L.a;g.fillRect(x+bw/2-1,h-bh-8,2,8);}
+        x+=bw+rnd(16,3);
+      }
+      this.layers.push({cv:o,h:Math.ceil(Math.max(2,this.h)*L.h)+40,sc:L.sc,off:0});
+    });
+  },
+  draw(dt){
+    const c=this.c,w=this.w,h=this.h,st=this.stage; if(!st||!c)return;
+    const sp=this.frozen?0:this.speed;
+    if(!this.frozen)this.t+=dt;
+    const t=this.t;
+    const g=c.createLinearGradient(0,0,0,h);
+    const drift=Math.sin(t*.00022)*.06;
+    g.addColorStop(0,st.sky[0]); g.addColorStop(clamp(.5+drift,.3,.7),st.sky[1]); g.addColorStop(1,st.sky[2]);
+    c.globalAlpha=1; c.globalCompositeOperation='source-over';
+    c.fillStyle=g; c.fillRect(0,0,w,h);
+
+    c.globalCompositeOperation='screen';
+    const gg=c.createRadialGradient(w*.5,h*.74,0,w*.5,h*.74,w*.95);
+    gg.addColorStop(0,st.acc+'66'); gg.addColorStop(1,'rgba(0,0,0,0)');
+    c.fillStyle=gg; c.fillRect(0,0,w,h);
+    for(const p of this.pillars){
+      const a=.14+Math.sin(t*.0016*p.s+p.p)*.11;
+      const lg=c.createLinearGradient(0,h,0,h*.10);
+      lg.addColorStop(0,'rgba(0,0,0,0)'); lg.addColorStop(.42,st.acc); lg.addColorStop(1,'rgba(0,0,0,0)');
+      c.globalAlpha=clamp(a,0,1); c.fillStyle=lg; c.fillRect(p.x-p.w/2,h*.08,p.w,h*.92);
+    }
+    c.globalAlpha=1; c.globalCompositeOperation='source-over';
+
+    this.layers.forEach((L,i)=>{
+      if(!this.frozen)L.off=(L.off+dt*L.sc*.06*sp)%w;
+      c.drawImage(L.cv,-L.off,h-L.h,w*2,L.h);
+      c.drawImage(L.cv,-L.off+w*2,h-L.h,w*2,L.h);
+    });
+
+    const rg=c.createLinearGradient(0,h*.84,0,h);
+    rg.addColorStop(0,'rgba(255,255,255,0)'); rg.addColorStop(1,st.acc+'3d');
+    c.fillStyle=rg; c.fillRect(0,h*.84,w,h*.16);
+
+    if(st.rain>0){
+      c.strokeStyle='rgba(198,224,255,'+(.20*st.rain)+')'; c.lineWidth=1.1; c.beginPath();
+      for(const r of this.rain){
+        if(!this.frozen){r.y+=r.v*st.rain*dt*.06*sp; if(r.y>h){r.y=-20;r.x=rnd(w);}}
+        c.moveTo(r.x,r.y); c.lineTo(r.x-2.5,r.y+r.l);
+      }
+      c.stroke();
+    }
+    c.globalCompositeOperation='screen';
+    for(const e of this.embers){
+      if(!this.frozen){e.y-=e.v*dt*.05*sp;e.p+=dt*.002; if(e.y<-10){e.y=h+10;e.x=rnd(w);}}
+      c.fillStyle=st.acc; c.globalAlpha=clamp(.3+Math.sin(e.p)*.26,0,1);
+      c.beginPath(); c.arc(e.x+Math.sin(e.p)*10,e.y,e.s,0,6.284); c.fill();
+    }
+    c.globalAlpha=1; c.globalCompositeOperation='source-over';
+  }
+};
+
+/* ===================== FX ===================== */
+const FX={
+  cv:null,c:null,w:0,h:0,dpr:1,ps:[],shake:0,shakeT:0,
+  init(){this.cv=$('#fx');this.c=this.cv.getContext('2d');this.resize();addEventListener('resize',()=>this.resize());},
+  resize(){this.dpr=Math.min(devicePixelRatio||1,2);this.w=innerWidth||375;this.h=innerHeight||812;
+    this.cv.width=Math.max(1,this.w*this.dpr);this.cv.height=Math.max(1,this.h*this.dpr);
+    this.c.setTransform(this.dpr,0,0,this.dpr,0,0);},
+  burst(x,y,n,o={}){
+    for(let i=0;i<n;i++){
+      if(this.ps.length>560)break;
+      const a=o.dir!==undefined?o.dir+rnd(o.spread||6.284)-(o.spread||6.284)/2:rnd(6.284);
+      const sp=rnd(o.smax||9,o.smin||1.5);
+      this.ps.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1,
+        decay:rnd(o.dmax||.028,o.dmin||.010),s:rnd(o.szmax||5,o.szmin||1.4),
+        col:o.col||'#fff',g:o.g===undefined?.16:o.g,type:o.type||'dot'});
+    }
+  },
+  ring(x,y,col){this.ps.push({x,y,vx:0,vy:0,life:1,decay:.035,s:12,col,type:'ring',g:0});},
+  rainbowBurst(x,y,n=140){
+    const cols=['#ff2d6f','#ffb400','#7cff4d','#00d4ff','#a45cff','#fff'];
+    for(let i=0;i<n;i++)this.burst(x,y,1,{col:cols[i%cols.length],smax:17,smin:3,szmax:7,szmin:2,dmax:.016,dmin:.007});
+  },
+  hit(mag=10,ms=260){this.shake=Math.max(this.shake,mag);this.shakeT=Math.max(this.shakeT,ms);this.shakeMax=this.shakeT;},
+  flash(col='#fff',ms=180,op=.85){
+    // rAFに依存すると省電力環境でフラッシュが消え残るため、同期リフローで確定させる
+    const el=$('#tintFlash');
+    el.style.transition='none';el.style.background=col;el.style.opacity=op;
+    void el.offsetWidth;
+    el.style.transition='opacity '+ms+'ms ease-out';el.style.opacity=0;
+  },
+  draw(dt){
+    const c=this.c;if(!c)return;
+    c.clearRect(0,0,this.w,this.h);
+    c.globalCompositeOperation='lighter';
+    for(let i=this.ps.length-1;i>=0;i--){
+      const p=this.ps[i];
+      p.life-=p.decay*dt*.06;
+      if(p.life<=0){this.ps.splice(i,1);continue;}
+      if(p.type==='ring'){
+        p.s+=dt*.55; c.globalAlpha=p.life*.8; c.strokeStyle=p.col; c.lineWidth=2.5*p.life+.5;
+        c.beginPath();c.arc(p.x,p.y,p.s,0,6.284);c.stroke(); continue;
+      }
+      p.x+=p.vx*dt*.06;p.y+=p.vy*dt*.06;p.vy+=p.g*dt*.06;p.vx*=.992;p.vy*=.992;
+      c.globalAlpha=clamp(p.life,0,1); c.fillStyle=p.col;
+      if(p.type==='shard'){c.save();c.translate(p.x,p.y);c.rotate(Math.atan2(p.vy,p.vx));
+        c.fillRect(-p.s*2.4,-p.s*.35,p.s*4.8,p.s*.7);c.restore();}
+      else{c.beginPath();c.arc(p.x,p.y,p.s*clamp(p.life+.25,0,1),0,6.284);c.fill();}
+    }
+    c.globalAlpha=1;c.globalCompositeOperation='source-over';
+    if(this.shakeT>0){
+      this.shakeT-=dt;
+      const k=clamp(this.shakeT/(this.shakeMax||260),0,1)*this.shake;
+      $('#app').style.transform=`translate(${rnd(k,-k)}px,${rnd(k,-k)}px) rotate(${rnd(k,-k)*.08}deg)`;
+      if(this.shakeT<=0){this.shake=0;$('#app').style.transform='';}
+    }
+  }
+};
+
+/* ===================== DIRECTOR ===================== */
+const TIERS=[
+  {k:'none', col:'#5a7fd8', lbl:''},
+  {k:'cyan', col:'#00e5ff', lbl:'…なにか来る'},
+  {k:'green',col:'#7cff4d', lbl:'チャンス！'},
+  {k:'red',  col:'#ff2d3f', lbl:'激アツ！！'},
+  {k:'gold', col:'#ffd45e', lbl:'超激アツ！！！'},
+  {k:'rb',   col:'#ffffff', lbl:'虹 ─ 確 定'},
+];
+const G={streak:0,best:+(localStorage.getItem('jr_best')||0),stage:null,enemy:null,
+  plan:null,busy:false,running:false,hp:3};
+
+/* 勝率カーブ。
+   序盤2回は必勝にする。初回プレイで演出を1つも見ないまま終わると
+   「もう一回」が生まれない。以降はRUSH以降ほど落ちにくくして、
+   登るほど手放したくなくなる形にする。 */
+function winRateFor(streak){
+  if(streak<2) return 1;
+  if(streak===2) return .78;
+  const st=stageFor(streak);
+  return st.min>=15?.90 : st.min>=10?.86 : st.min>=5?.80 : st.min>=4?.72 : st.min>=3?.67 : .64;
+}
+function planRound(){
+  const winRate=winRateFor(G.streak);
+  let win=Math.random()<winRate;
+  let tier = win ? wpick([[1,26],[2,26],[3,24],[4,16],[5,8]])
+                 : wpick([[0,26],[1,42],[2,22],[3,9],[4,1]]);
+  const route=[];
+  if(win && tier>=4 && Math.random()<.32) route.push('freeze');
+  if(Math.random()<.34) route.push('pseudo');
+  if(Math.random()<(win?.34:.16)) route.push('cutin');
+  if(Math.random()<(tier>=3?.34:.10)) route.push('yakumono');
+  if(win && tier>=3 && Math.random()<.24) route.push('revive');
+  if(route.includes('freeze')){tier=5;win=true;}
+  const foreshadow=Math.random()<(tier>=3?.55:.20);
+  return {win,tier,route,foreshadow,pseudoN:ri(1,3)};
+}
+
+/* ===================== VIEW ===================== */
+function applyStage(st){
+  G.stage=st;
+  const r=document.documentElement.style;
+  r.setProperty('--acc',st.acc); r.setProperty('--accGlow',st.acc+'aa');
+  $('#stageName').textContent=st.n; $('#stageName').style.borderColor=st.acc;
+  $('#heat').style.opacity=st.heat;
+  BG.setStage(st);
+  BG.speed=1+STAGES.indexOf(st)*.55;
+}
+function setEnemy(e){
+  G.enemy=e; G.hp=3;
+  document.documentElement.style.setProperty('--ec',e.c);
+  $('#enemyName').textContent=e.n;
+  refreshHp();
+  newTell();
+}
+function refreshHp(){
+  document.querySelectorAll('#enemyHp i').forEach((el,i)=>el.classList.toggle('on',i<G.hp));
+}
+function newTell(){
+  const e=G.enemy;
+  $('#enemyTell').textContent=pick(e.tells);
+  $('#enemyTell').classList.remove('hit');
+  // 弱点をボタン側にヒント表示（読みが学習可能になる）
+  document.querySelectorAll('.hbtn').forEach(b=>b.classList.remove('weak'));
+}
+function setTension(tier){
+  const T=TIERS[tier];
+  const f=$('#tensionFill'),l=$('#tensionLbl');
+  f.style.setProperty('--tc',T.col); l.style.setProperty('--tc',T.col);
+  f.style.right=(100-tier*20)+'%';
+  if(tier===5){f.style.background='linear-gradient(90deg,#ff2d6f,#ffb400,#7cff4d,#00d4ff,#a45cff)';}
+  else f.style.background=T.col;
+  l.textContent=T.lbl; l.classList.toggle('on',!!T.lbl);
+}
+function big(txt,{col='#fff',rb=false,ms=700,sub=null,subCol='#fff'}={}){
+  const b=$('#bigText'),s=$('#subText');
+  b.className='';void b.offsetWidth;
+  b.textContent=txt; b.style.color=rb?'':col;
+  if(rb)b.classList.add('rbText'); b.classList.add('in');
+  if(sub){s.className='';void s.offsetWidth;s.textContent=sub;s.style.color=subCol;s.classList.add('in');}
+  else{s.className='';s.textContent='';}
+  return wait(ms);
+}
+function bigOut(){const b=$('#bigText');b.classList.remove('in');b.classList.add('out');$('#subText').className='';}
+function setAura(tier){
+  const a=$('#foreAura'),T=TIERS[tier];
+  if(tier<=0){a.classList.remove('on');return;}
+  a.style.setProperty('--fc',T.col);
+  if(tier===5){a.style.borderColor='transparent';
+    a.style.background='conic-gradient(#ff2d6f,#ffb400,#7cff4d,#00d4ff,#a45cff,#ff2d6f)';
+    a.style.mixBlendMode='screen';}
+  else{a.style.background='none';a.style.mixBlendMode='';a.style.borderColor=T.col;}
+  a.classList.add('on');
+}
+function clearAura(){const a=$('#foreAura');a.classList.remove('on');a.style.background='none';}
+function showHand(sel,hand){
+  const el=$(sel); el.innerHTML=handSVG(hand); el.style.color=HAND_COLOR[hand];
+  el.classList.remove('show');void el.offsetWidth;el.classList.add('show');
+  $('#battleScrim').classList.add('on');document.body.classList.add('battling');
+}
+function clearHands(){
+  $('#handP').classList.remove('show');$('#handE').classList.remove('show');
+  $('#vsMark').classList.remove('show');$('#battleScrim').classList.remove('on');
+  document.body.classList.remove('battling');
+}
+function lockControls(v){$('#controls').classList.toggle('locked',v);}
+function cx(){return (innerWidth||375)/2}
+function cy(){return (innerHeight||812)/2}
+
+/* ===================== 演出 ===================== */
+async function fxCountdown(tier){
+  const c=$('#count');
+  for(let i=0;i<3;i++){
+    c.className='';void c.offsetWidth;
+    c.textContent=String(3-i);
+    c.style.textShadow=`0 0 30px ${TIERS[tier].col},0 0 74px ${TIERS[tier].col}`;
+    c.classList.add('tick'); Snd.tick(i,tier);
+    FX.ring(cx(),cy(),TIERS[tier].col);
+    await wait(tier>=3?320:390);
+  }
+  c.className='';
+}
+async function fxCutin(text,col){
+  const el=$('#cutin'); el.style.setProperty('--cc',col);
+  el.querySelector('.cutText').textContent=text;
+  el.classList.remove('on');void el.offsetWidth;el.classList.add('on');
+  Snd.impact();FX.hit(16,300);FX.flash(col,220,.5);
+  FX.burst(cx(),cy(),60,{col,smax:18,smin:4,szmax:6,type:'shard',g:0});
+  buzz(30); await wait(760); el.classList.remove('on'); await wait(110);
+}
+async function fxYakumono(){
+  const y=$('#yakumono'); y.innerHTML=handSVG('rock');
+  y.classList.remove('drop');void y.offsetWidth;y.classList.add('drop');
+  Snd.charge(.6); await wait(700);
+  Snd.impact();FX.hit(26,420);FX.flash('#ffb400',260,.7);
+  FX.burst(cx(),cy()*.9,90,{col:'#ffd45e',smax:16,smin:3,szmax:7,g:.4});
+  FX.ring(cx(),cy()*.9,'#ffd45e'); buzz([40,30,60]);
+  await wait(540); y.classList.remove('drop');
+}
+async function fxPseudo(i){
+  await big('ま だ\n終 わ ら な い',{col:'#c46bff',ms:520});
+  Snd.pseudo(i);FX.hit(14+i*4,300);FX.flash('#a45cff',200,.5);
+  FX.burst(cx(),cy(),60,{col:'#c46bff',smax:14,smin:3,type:'shard',g:0});
+  buzz(25); bigOut(); await wait(170);
+  await big((i+2)+' 連',{col:'#ff4dff',ms:400}); bigOut(); await wait(140);
+}
+async function fxFreeze(){
+  BG.frozen=true;
+  const f=$('#freeze'),g=$('#cracks');let d='';
+  for(let i=0;i<14;i++){
+    let x=200,y=400,p=`M${x} ${y}`;const a0=rnd(6.284);
+    for(let k=0;k<5;k++){x+=Math.cos(a0+rnd(.7,-.7))*rnd(120,50);y+=Math.sin(a0+rnd(.7,-.7))*rnd(160,60);p+=` L${x} ${y}`;}
+    d+=`<path class="crk" style="animation-delay:${i*.02}s" d="${p}"/>`;
+  }
+  g.innerHTML=d;
+  f.classList.remove('on');void f.offsetWidth;f.classList.add('on');
+  Snd.freeze();buzz([10,40,10,40,120]);FX.flash('#dff4ff',90,1);
+  await wait(1500);
+  f.classList.remove('on');BG.frozen=false;
+  Snd.confirm();FX.flash('#fff',420,1);FX.hit(30,520);
+  FX.rainbowBurst(cx(),cy(),180);
+  await big('確 定',{rb:true,ms:760});bigOut();await wait(150);
+}
+async function fxRevive(){
+  await big('L O S E',{col:'#7e8fbd',ms:600});
+  Snd.lose();bigOut();await wait(300);
+  Snd.charge(.55);FX.hit(12,300);await wait(340);
+  FX.flash('#ffd45e',420,1);FX.hit(30,520);Snd.confirm();
+  FX.rainbowBurst(cx(),cy(),160);buzz([60,40,120]);
+  await big('復 活 !!',{rb:true,ms:800});bigOut();await wait(140);
+}
+async function fxStageUp(st){
+  const el=$('#stageUp');const nm=$('#stageUpName');
+  nm.textContent=st.n; nm.className='t2'+(st.rb?' rbText':'');
+  nm.style.color=st.rb?'':st.acc;
+  el.classList.remove('on');void el.offsetWidth;el.classList.add('on');
+  Snd.stageUp();FX.hit(24,600);FX.flash(st.acc,420,.8);
+  FX.burst(cx(),cy(),120,{col:st.acc,smax:15,smin:2,szmax:6,g:0});
+  buzz([50,30,50,30,90]);
+  await wait(1480);el.classList.remove('on');
+}
+async function fxDefeat(){
+  Snd.defeat();FX.hit(22,520);FX.flash('#fff',300,.7);
+  FX.burst(cx(),cy()*.92,110,{col:G.enemy.c,smax:16,smin:3,szmax:7,type:'shard',g:.3});
+  buzz([40,40,90]);
+  await big('撃 破 !',{col:'#ffd45e',ms:720,sub:'次の相手が来る',subCol:'#cfdcff'});
+  bigOut();await wait(220);
+}
+
+/* ===================== ROUND ===================== */
+function prepareRound(){
+  G.plan=planRound();
+  clearAura();clearHands();
+  $('#enemy').classList.remove('hot');
+  setTension(0);
+  newTell();
+  // 敵の傾向が読めるとき、弱点ボタンを控えめに光らせる（学習の足場）
+  if(G.enemy.lean) document.querySelector('.hbtn.'+LOSES_TO[G.enemy.lean])?.classList.add('weak');
+  if(G.plan.foreshadow){
+    const t=clamp(G.plan.tier,1,4);
+    document.documentElement.style.setProperty('--eyeC',TIERS[t].col);
+    document.querySelectorAll('.eye').forEach(e=>e.style.background=TIERS[t].col);
+    $('#enemy').classList.add('hot');
+    Snd.tone({f:660,f2:1200,d:.5,type:'sine',v:.14});
+    FX.ring(cx(),cy()*.86,TIERS[t].col);
+  }else{
+    document.documentElement.style.setProperty('--eyeC','#ffffff');
+    document.querySelectorAll('.eye').forEach(e=>e.style.background='#fff');
+  }
+  lockControls(false);
+}
+
+async function onPick(hand){
+  if(G.busy||!G.running)return;
+  G.busy=true;lockControls(true);
+  Snd.lock();buzz(12);
+  FX.burst(cx(),(innerHeight||812)*.88,26,{col:HAND_COLOR[hand],smax:9,smin:2,szmax:4});
+
+  const plan=G.plan,e=G.enemy;
+  let tier=plan.tier;
+  if(e.lean && LOSES_TO[e.lean]===hand && tier<5){
+    tier=clamp(tier+1,0,5);
+    $('#enemyTell').classList.add('hit');
+    $('#enemyTell').textContent='読み勝ち！ 期待度アップ';
+    Snd.read();
+  }
+  setAura(tier);setTension(tier);
+
+  if(plan.route.includes('pseudo')){
+    for(let i=0;i<plan.pseudoN;i++){
+      await fxCountdown(Math.max(1,tier-1));
+      showHand('#handP',hand);showHand('#handE',hand);
+      $('#vsMark').classList.add('show');
+      Snd.impact();FX.hit(10,220);
+      await wait(400);
+      await big('あ い こ',{col:'#b9c8ee',ms:400});bigOut();
+      clearHands();await wait(110);
+      await fxPseudo(i);
+      if(Math.random()<.5){tier=clamp(tier+1,0,5);setAura(tier);setTension(tier);}
+    }
+  }
+
+  await fxCountdown(tier);
+  if(plan.route.includes('yakumono'))await fxYakumono();
+  if(plan.route.includes('cutin'))await fxCutin(plan.win?'神 手':'見 切 り',TIERS[tier].col);
+  if(plan.route.includes('freeze'))await fxFreeze();
+  if(plan.win&&plan.route.includes('revive')&&!plan.route.includes('freeze'))await fxRevive();
+
+  const enemyHand=plan.win?BEATS[hand]:LOSES_TO[hand];
+  showHand('#handP',hand);showHand('#handE',enemyHand);
+  $('#vsMark').classList.add('show');
+  Snd.impact();FX.hit(18,320);buzz(20);
+  FX.burst((innerWidth||375)*.24,(innerHeight||812)*.74,40,{col:HAND_COLOR[hand],smax:12,smin:2});
+  FX.burst((innerWidth||375)*.76,(innerHeight||812)*.24,40,{col:HAND_COLOR[enemyHand],smax:12,smin:2});
+  await wait(420);
+
+  if(plan.win)await resolveWin(tier);else await resolveLose();
+  G.busy=false;
+}
+
+async function resolveWin(tier){
+  G.streak++;
+  const st=stageFor(G.streak),prev=G.stage;
+  const n=$('#streakNum');
+  n.textContent=G.streak;
+  n.classList.remove('pop');void n.offsetWidth;n.classList.add('pop');
+  Snd.win(G.streak);
+  FX.flash(tier>=4?'#fff':'#ffd45e',300,tier>=4?.9:.55);
+  FX.hit(14+tier*3,380);
+  if(tier>=5)FX.rainbowBurst(cx(),cy(),160);
+  else FX.burst(cx(),cy(),80,{col:TIERS[tier].col,smax:14,smin:3,szmax:6});
+  buzz([30,20,50]);
+  await big('YOU\nWIN!',{rb:tier>=5,col:'#ffd45e',ms:800,sub:G.streak+' 連 勝',subCol:st.acc});
+  bigOut();clearHands();clearAura();setTension(0);
+  await wait(200);
+
+  if(st!==prev){applyStage(st);await fxStageUp(st);}
+
+  G.hp--;refreshHp();
+  if(G.hp<=0){
+    await fxDefeat();
+    const next=ENEMIES.filter(x=>x!==G.enemy);
+    setEnemy(pick(next));
+  }
+  if(G.running)prepareRound();
+}
+
+async function resolveLose(){
+  Snd.lose();FX.hit(20,460);FX.flash('#3a4d80',420,.6);buzz([80,60,140]);
+  await big('L O S E',{col:'#b9c8ee',ms:880});
+  bigOut();clearHands();clearAura();setTension(0);
+  await wait(280);
+  gameOver();
+}
+
+/* ===================== FLOW ===================== */
+function startRun(){
+  G.streak=0;G.running=true;G.busy=false;
+  document.body.classList.remove('menu','battling');
+  $('#streakNum').textContent='0';
+  $('#bestNum').textContent=G.best;
+  applyStage(STAGES[0]);
+  setEnemy(pick(ENEMIES));
+  $('#titleScreen').classList.add('hidden');
+  $('#resultScreen').classList.add('hidden');
+  clearHands();clearAura();setTension(0);
+  prepareRound();
+}
+function gameOver(){
+  G.running=false;
+  if(G.streak>G.best){G.best=G.streak;localStorage.setItem('jr_best',G.best);}
+  $('#rStreak').textContent=G.streak;
+  $('#rBest').textContent=G.best;
+  $('#bestNum').textContent=G.best;
+  const next=STAGES.find(s=>s.min>G.streak);
+  let msg;
+  if(next){const d=next.min-G.streak;
+    msg=d<=2?`あと ${d} 連勝で「${next.n}」だった。`:`次は「${next.n}」まで あと ${d} 連勝。`;}
+  else msg='最上位ステージ到達。まだ上を目指せる。';
+  if(G.streak>0&&G.streak===G.best)msg='自己ベスト更新！　'+msg;
+  $('#regret').textContent=msg;
+  $('#resultScreen').classList.remove('hidden');
+  document.body.classList.add('menu');
+  lockControls(true);
+}
+
+/* ===================== BOOT ===================== */
+function boot(){
+  document.body.classList.add('menu');
+  BG.init();FX.init();
+  applyStage(STAGES[0]);
+  setEnemy(ENEMIES[0]);
+  document.querySelectorAll('.hbtn').forEach(b=>{
+    b.querySelector('.ic').innerHTML=handSVG(b.dataset.h);
+    b.addEventListener('pointerdown',ev=>{ev.preventDefault();onPick(b.dataset.h);});
+  });
+  $('#startBtn').addEventListener('click',()=>{Snd.init();Snd.ui();startRun();});
+  $('#retryBtn').addEventListener('click',()=>{Snd.init();Snd.ui();startRun();});
+
+  let last=performance.now(),frames=0,mode='raf';
+  function step(dt){BG.draw(dt);FX.draw(dt);}
+  (function loop(now){
+    if(mode!=='raf')return;
+    const dt=Math.min(now-last,50);last=now;frames++;
+    step(dt);requestAnimationFrame(loop);
+  })(last);
+  // 一部のWebView/省電力環境ではrAFが発火しない。止まっていたらタイマー描画へ退避する。
+  setTimeout(()=>{
+    if(frames>2)return;
+    mode='interval';
+    let t0=performance.now();
+    setInterval(()=>{const now=performance.now();const dt=Math.min(now-t0,50);t0=now;step(dt);},16);
+  },500);
+
+  // 検証用フック（rAFが止まる環境で手動描画するため）
+  window.JR={BG,FX,G,STAGES,ENEMIES,step,startRun,onPick,applyStage,setEnemy,
+    render(frames=60,dt=16){for(let i=0;i<frames;i++)step(dt);},
+    setSpeed(x){SPEED=x;}};
+}
+boot();
+</script>
+</body>
+</html>
