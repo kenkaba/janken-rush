@@ -146,7 +146,6 @@ export const BG = {
   init() {
     this.cv = $('#bg'); this.c = this.cv.getContext('2d');
     this.resize();
-    if (!this.bound) { addEventListener('resize', () => this.resize()); this.bound = true; }
   },
   resize() {
     this.dpr = Math.min(devicePixelRatio || 1, Quality.low ? 1 : 2);
@@ -254,10 +253,7 @@ export const BG = {
    ============================================================ */
 export const FX = {
   cv: null, c: null, w: 0, h: 0, dpr: 1, ps: [], shake: 0, shakeT: 0, shakeMax: 260, bound: false,
-  init() {
-    this.cv = $('#fx'); this.c = this.cv.getContext('2d'); this.resize();
-    if (!this.bound) { addEventListener('resize', () => this.resize()); this.bound = true; }
-  },
+  init() { this.cv = $('#fx'); this.c = this.cv.getContext('2d'); this.resize(); },
   resize() {
     this.dpr = Math.min(devicePixelRatio || 1, Quality.low ? 1 : 2);
     this.w = innerWidth || 375; this.h = innerHeight || 812;
@@ -561,6 +557,33 @@ export function resetPresentation() {
   $('#enemyTell').classList.remove('hit', 'missed');
   BG.frozen = false;
   FX.clear();
+}
+
+/* ============================================================
+   ビューポート追従とiOS復帰処理
+   iPhone Safari はアドレスバーの伸縮・回転・キーボードで頻繁に resize が飛ぶ。
+   街の再生成は重いので、まとめて1回だけ実行する。リスナーは1度だけ張る。
+   ============================================================ */
+let viewportBound = false, resizeTimer = null;
+export function installViewportHandlers() {
+  if (viewportBound) return;
+  viewportBound = true;
+  const onChange = () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => { BG.resize(); FX.resize(); }, 140);
+  };
+  addEventListener('resize', onChange);
+  addEventListener('orientationchange', onChange);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', onChange);
+  // バックグラウンド復帰で AudioContext が suspended のまま残ることがある
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && Snd.ctx && Snd.ctx.state === 'suspended') {
+      Snd.ctx.resume().catch(() => { /* 音が戻らなくてもゲームは止めない */ });
+    }
+  });
+  addEventListener('pageshow', () => {
+    if (Snd.ctx && Snd.ctx.state === 'suspended') Snd.ctx.resume().catch(() => {});
+  });
 }
 
 /* ============================================================

@@ -3,9 +3,27 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no,maximum-scale=1">
-<meta name="theme-color" content="#05060f">
-<title>JANKEN RUSH</title>
-<link rel="stylesheet" href="./src/styles.css">
+<title>JANKEN RUSH — ジャンケンを、ここまでアツく。</title>
+<meta name="description" content="ルールは世界一シンプル。体験は世界一派手。連勝するほどステージが進化する、演出だけで殴りにくるジャンケン。">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#12061f">
+
+<!-- iPhone ホーム画面（standalone）対応 -->
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="JANKEN">
+<link rel="apple-touch-icon" href="./icons/icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+<link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="JANKEN RUSH">
+<meta property="og:description" content="ジャンケンを、ここまでアツく。">
+<meta property="og:image" content="./icons/icon-512.png">
+
+<link rel="stylesheet" href="./src/styles.css?v=0.2.2">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
@@ -126,6 +144,28 @@
     </div>
   </div>
 
+  <!-- ============ ホーム画面追加の案内（Safari初回のみ） ============ -->
+  <div id="a2hs" hidden>
+    <div class="a2hsCard">
+      <div class="a2hsHead">
+        <img src="./icons/icon-180.png" alt="" width="40" height="40">
+        <div>
+          <div class="a2hsTitle">ホーム画面に追加</div>
+          <div class="a2hsSub">アプリのように全画面で遊べます</div>
+        </div>
+        <button class="a2hsClose" id="a2hsClose" aria-label="閉じる">✕</button>
+      </div>
+      <ol class="a2hsSteps">
+        <li>下の <b>共有ボタン</b> を押す</li>
+        <li><b>ホーム画面に追加</b> を選ぶ</li>
+        <li>右上の <b>追加</b> を押す</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- ============ デバッグ（?debug=1 のときだけ表示） ============ -->
+  <div id="debugPanel" hidden></div>
+
   <!-- ============ SHOWCASE / TRAINING 終了 ============ -->
   <div class="screen hidden" id="showcaseEnd">
     <div class="logo" style="font-size:clamp(24px,8vw,44px);color:#fff" id="showcaseEndTitle">SHOWCASE 終了</div>
@@ -137,6 +177,8 @@
   </div>
 </div>
 
-<script type="module" src="./src/boot.js"></script>
+<!-- v= がこのアプリのバージョン。更新時はここだけ上げれば
+     boot.js → game.js → core/view.js まで新しいURLになり、確実に届く。 -->
+<script type="module" src="./src/boot.js?v=0.2.2"></script>
 </body>
 </html>

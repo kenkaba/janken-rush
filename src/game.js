@@ -259,6 +259,7 @@ function hardReset(mode) {
   G.enemyHp = 3;
 
   document.body.classList.remove('menu');
+  $('#a2hs').hidden = true;            // ゲーム中に案内を残さない
   V.resetPresentation();
   V.setStreak(0, false);
   V.setBest(G.best);
@@ -330,12 +331,56 @@ function finishShowcase() {
 }
 
 /* ============================================================
+   iPhone 向けの周辺機能
+   ============================================================ */
+const BUILD = { version: '0.2.2', at: '2026-07-29' };
+
+const isStandalone = () =>
+  window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const isIOSSafari = () =>
+  /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+/** ホーム画面追加の案内。standalone起動時と、一度閉じた後は出さない。 */
+function setupAddToHomeHint() {
+  const el = $('#a2hs');
+  if (isStandalone() || localStorage.getItem('jr_a2hs_done')) return;
+  if (!isIOSSafari()) return;                      // iOS Safari 以外では手順が違うので出さない
+  setTimeout(() => {
+    if (!G.running) el.hidden = false;             // ゲーム中には割り込まない
+  }, 2500);
+  $('#a2hsClose').addEventListener('click', () => {
+    el.hidden = true;
+    localStorage.setItem('jr_a2hs_done', '1');
+  });
+}
+
+/** デバッグ表示。?debug=1 のときだけ。通常のプレイ画面には一切出さない。 */
+function setupDebugPanel() {
+  if (new URLSearchParams(location.search).get('debug') !== '1') return;
+  const el = $('#debugPanel');
+  el.hidden = false;
+  document.body.classList.add('debug');
+  const tick = () => {
+    const s = G;
+    const a = V.Snd.ctx ? V.Snd.ctx.state : 'none';
+    el.textContent =
+      `JANKEN RUSH v${BUILD.version} (${BUILD.at})  loop=${V.LoopInfo.mode}\n` +
+      `${isStandalone() ? 'standalone' : 'browser'}  ${innerWidth}x${innerHeight}  dpr=${devicePixelRatio}\n` +
+      `audio=${a}  fx=${V.Quality.low ? 'LOW' : 'HIGH'}  vibrate=${navigator.vibrate ? 'yes' : 'no'}\n` +
+      `mode=${s.mode} running=${s.running} streak=${s.streak} chain=${s.chain} enemy=${s.arch && s.arch.key}\n` +
+      `particles=${V.FX.ps.length} dom=${document.getElementsByTagName('*').length}`;
+  };
+  tick();
+  setInterval(tick, 500);
+}
+
+/* ============================================================
    起動
    ============================================================ */
 function boot() {
   document.body.classList.add('menu');
   V.Quality.init();
-  V.BG.init(); V.FX.init();
+  V.BG.init(); V.FX.init(); V.installViewportHandlers();
   V.applyStageVisual(0);
   V.showEnemyIdentity(pick(ARCHETYPE_LIST));
   V.setBest(G.best);
@@ -372,6 +417,8 @@ function boot() {
   if (!localStorage.getItem('jr_trained')) $('#btnTraining').classList.add('suggest');
 
   showTitle();
+  setupAddToHomeHint();
+  setupDebugPanel();
   exposeDebugApi();
 }
 
@@ -387,7 +434,7 @@ function showTitle() {
    ============================================================ */
 function exposeDebugApi() {
   window.JR = {
-    build: 'v0.2.1-fair',
+    build: BUILD,
     G, V,
     startFair, startShowcase, startTraining, showTitle,
     pick: (h) => submitPick(h),

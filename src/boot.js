@@ -1,10 +1,13 @@
 /* ============================================================
    JANKEN RUSH — boot loader
-   一部のブラウザ／埋め込みWebViewはESモジュールを強くキャッシュし、
-   no-store でも新しいタブでも古いコードを読み続けることがある。
-   （実際に検証中、修正済みのはずの挙動が旧コードのまま再現した）
-   毎回ユニークなURLで読み込むことで、この事故を根本から避ける。
-   game.js / view.js は import.meta.url の ?v= を子モジュールへ伝播させる。
+   index.html の <script src="./src/boot.js?v=X"> の X を
+   game.js → core.js / view.js まで伝播させる。
+
+   狙い:
+   - バージョンを上げたときだけ全モジュールのURLが変わり、更新が確実に届く
+   - 上げなければ通常どおりブラウザキャッシュが効く
+   - ホーム画面へ追加した後（standalone）でも同じ仕組みで更新できる
+   Service Worker は使っていないので、古い版が居座る事故が起きない。
    ============================================================ */
-const v = Date.now().toString(36);
-await import(`./game.js?v=${v}`);
+const v = new URL(import.meta.url).searchParams.get('v') || 'dev';
+await import(`./game.js?v=${encodeURIComponent(v)}`);

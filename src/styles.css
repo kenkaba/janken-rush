@@ -6,7 +6,10 @@ html,body{height:100%;overflow:hidden;background:#05060f;overscroll-behavior:non
 body{
   font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
   font-weight:800;color:#fff;user-select:none;-webkit-user-select:none;
+  /* iOSの長押しメニュー・文字選択・ダブルタップズームを抑える */
+  -webkit-touch-callout:none;
 }
+img{-webkit-touch-callout:none;pointer-events:none}
 /* HUD帯の高さ。#ui の上余白と、戦闘中セリフの退避位置を同じ値で揃える */
 :root{--topbarH:108px}
 #app{position:fixed;inset:0;overflow:hidden;will-change:transform}
@@ -316,6 +319,35 @@ body.battling #enemyTell{opacity:1;z-index:29;position:fixed;
 .hint{font-size:11px;letter-spacing:1px;color:#7e8fbd;text-align:center;line-height:1.9}
 #heat{position:absolute;left:0;right:0;bottom:0;height:28%;z-index:5;pointer-events:none;opacity:0;
   background:linear-gradient(0deg,var(--acc,#ffb400),transparent);mix-blend-mode:screen;transition:opacity .6s}
+
+/* ---------- ホーム画面追加の案内（Safari初回のみ） ---------- */
+#a2hs{position:absolute;left:0;right:0;bottom:0;z-index:70;
+  padding:0 12px calc(env(safe-area-inset-bottom) + 12px);
+  display:flex;justify-content:center;pointer-events:none}
+#a2hs[hidden]{display:none}
+.a2hsCard{pointer-events:auto;width:min(360px,94vw);
+  background:rgba(10,14,32,.96);border:1px solid rgba(255,255,255,.26);border-radius:14px;
+  padding:12px 14px;box-shadow:0 12px 40px rgba(0,0,0,.7);
+  animation:a2hsIn .45s cubic-bezier(.2,1.4,.35,1) both}
+@keyframes a2hsIn{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:translateY(0)}}
+.a2hsHead{display:flex;align-items:center;gap:10px}
+.a2hsHead img{border-radius:9px;flex:0 0 auto}
+.a2hsTitle{font-size:13px;letter-spacing:1px;color:#fff}
+.a2hsSub{font-size:10px;letter-spacing:.5px;color:#9fb4e8;margin-top:2px;font-weight:700}
+.a2hsClose{margin-left:auto;width:44px;height:44px;border:none;background:none;cursor:pointer;
+  color:#8fa4d8;font-size:15px;font-family:inherit;flex:0 0 auto}
+.a2hsSteps{margin:8px 0 2px;padding-left:20px;font-size:11px;line-height:1.9;color:#d3dfff;font-weight:700}
+.a2hsSteps b{color:#ffd45e}
+
+/* ---------- デバッグ（?debug=1 のときだけ） ---------- */
+#debugPanel{position:absolute;left:0;right:0;bottom:0;z-index:80;pointer-events:none;
+  padding:6px 10px calc(env(safe-area-inset-bottom) + 6px);
+  background:rgba(0,0,0,.72);color:#7cff4d;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:9px;line-height:1.55;font-weight:600;letter-spacing:.2px;
+  white-space:pre-wrap;border-top:1px solid rgba(124,255,77,.3)}
+#debugPanel[hidden]{display:none}
+/* デバッグ表示中はホーム画面案内を押し上げて重ねない */
+body.debug #a2hs{bottom:92px}
 
 /* ---------- 小さい端末（iPhone SE 高さ667 など） ---------- */
 @media (max-height:740px){
