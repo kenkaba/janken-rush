@@ -1,6 +1,32 @@
-# JANKEN RUSH — prototype v0.2
+# JANKEN RUSH — prototype v0.2.2
 
-ジャンケンの皮をかぶった「期待感エンジン」。依存ライブラリ・画像・音源ファイルはゼロ。
+**遊ぶ → https://kenkaba.github.io/janken-rush/**
+
+ジャンケンの皮をかぶった「期待感エンジン」。依存ライブラリ・音源ファイルはゼロ。
+
+## 公開
+
+| 項目 | 値 |
+|---|---|
+| 公開URL | https://kenkaba.github.io/janken-rush/ |
+| 方式 | GitHub Pages（`main` ブランチのルートを配信、HTTPS強制） |
+| リポジトリ | https://github.com/kenkaba/janken-rush |
+| ビルド | 不要（静的ファイルのみ） |
+
+### 更新方法
+
+```bash
+cd ~/janken-rush
+# コードを直したら index.html の ?v=0.2.2 を上げる（1箇所だけ）
+git add -A && git commit -m "..." && git push
+```
+
+`push` から1〜2分でGitHub Pagesが再ビルドする。
+GitHub Pages は全ファイルに `Cache-Control: max-age=600` を付けるため、
+最大10分で新しい `index.html` が届く。届いた時点で `?v=` が変わり、
+`boot.js → game.js → core.js / view.js` まで一括で新しいURLになる。
+Service Worker を使っていないので、古い版が居座り続ける事故は起きない。
+ホーム画面へ追加した後も同じ経路で更新される。
 
 ```bash
 python3 -c "import os
@@ -14,6 +40,24 @@ ThreadingHTTPServer(('127.0.0.1',5177),H).serve_forever()"
 ```
 
 ESモジュール構成のため `file://` では動かない。ローカルサーバー経由で開くこと。
+
+## iPhone（ホーム画面アプリ化）
+
+1. Safariで https://kenkaba.github.io/janken-rush/ を開く
+2. 下の共有ボタン → 「ホーム画面に追加」 → 右上「追加」
+3. ホーム画面のアイコンから起動すると、Safariのバーが消えた全画面（standalone）で動く
+
+初回のSafariアクセス時だけ、手順の案内カードが自動で出る（閉じると二度と出ない。
+ホーム画面から起動した場合は最初から出ない）。
+
+音は iOS の制限で自動再生できない。タイトルの「はじめる」「訓練戦」「演出デモ」の
+**最初のタップで AudioContext を作成**して有効化する。バックグラウンド復帰時は
+`visibilitychange` / `pageshow` で resume を試みる。復帰に失敗してもゲームは止まらない。
+
+iPhoneは振動APIに未対応。振動の代わりに画面揺れ・白フラッシュ・ボタン沈み・重低音で代替している。
+
+デバッグ表示は `?debug=1` を付けたときだけ出る。通常のプレイ画面には一切出ない。
+→ https://kenkaba.github.io/janken-rush/?debug=1
 
 ---
 
