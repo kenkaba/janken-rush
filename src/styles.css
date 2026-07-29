@@ -1,378 +1,320 @@
 /* ============================================================
-   JANKEN RUSH — styles
+   JANKEN RUSH v0.3 — 仮面破壊バトル
+   画面は「見るべきものが一瞬で分かる」ことを最優先に組む。
    ============================================================ */
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--topH:52px;--gaugeH:24px;--declH:88px;--ctrlH:132px}
 html,body{height:100%;overflow:hidden;background:#05060f;overscroll-behavior:none;touch-action:manipulation}
 body{
-  font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-  font-weight:800;color:#fff;user-select:none;-webkit-user-select:none;
-  /* iOSの長押しメニュー・文字選択・ダブルタップズームを抑える */
-  -webkit-touch-callout:none;
+  font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",-apple-system,BlinkMacSystemFont,sans-serif;
+  font-weight:800;color:#fff;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;
 }
 img{-webkit-touch-callout:none;pointer-events:none}
-/* HUD帯の高さ。#ui の上余白と、戦闘中セリフの退避位置を同じ値で揃える */
-:root{--topbarH:108px}
-#app{position:fixed;inset:0;overflow:hidden;will-change:transform}
+#app{position:fixed;inset:0;overflow:hidden;will-change:transform;
+  display:flex;flex-direction:column;
+  padding:calc(env(safe-area-inset-top) + 6px) 12px calc(env(safe-area-inset-bottom) + 8px)}
 canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 #bg{z-index:0}
 #fx{z-index:40;pointer-events:none}
-
 .vignette{position:absolute;inset:0;z-index:30;pointer-events:none;
-  background:radial-gradient(ellipse 80% 64% at 50% 44%,transparent 40%,rgba(0,0,0,.48) 86%,rgba(0,0,0,.82) 100%)}
-.scan{position:absolute;inset:0;z-index:31;pointer-events:none;opacity:.13;mix-blend-mode:overlay;
-  background:repeating-linear-gradient(0deg,rgba(255,255,255,.10) 0 1px,transparent 1px 3px)}
-.grain{position:absolute;inset:-50%;z-index:32;pointer-events:none;opacity:.04;
-  background-image:radial-gradient(circle,#fff 1px,transparent 1px);background-size:3px 3px;
-  animation:grain 1.1s steps(4) infinite}
-@keyframes grain{0%{transform:translate(0,0)}25%{transform:translate(-2%,1%)}50%{transform:translate(1%,-2%)}75%{transform:translate(-1%,-1%)}100%{transform:translate(0,0)}}
+  background:radial-gradient(ellipse 82% 66% at 50% 44%,transparent 42%,rgba(0,0,0,.5) 88%,rgba(0,0,0,.85) 100%)}
+.scan{position:absolute;inset:0;z-index:31;pointer-events:none;opacity:.1;mix-blend-mode:overlay;
+  background:repeating-linear-gradient(0deg,rgba(255,255,255,.1) 0 1px,transparent 1px 3px)}
 #tintFlash{position:absolute;inset:0;z-index:45;pointer-events:none;opacity:0;mix-blend-mode:screen}
+#heat{position:absolute;left:0;right:0;bottom:0;height:26%;z-index:5;pointer-events:none;opacity:0;
+  background:linear-gradient(0deg,var(--acc,#ffb400),transparent);mix-blend-mode:screen;transition:opacity .6s}
+body.fx-low .scan{display:none}
+body.menu #topbar,body.menu #gauges,body.menu #stage,body.menu #declare,body.menu #controls{opacity:0;pointer-events:none}
 
-/* 低負荷モード：粒状ノイズ・走査線・重いglowを落とす */
-body.fx-low .grain,body.fx-low .scan{display:none}
-body.fx-low .enemyGlow{filter:none}
-body.fx-low .orbit{display:none}
+/* ============ 上部：仮面とシールド ============ */
+#topbar{position:relative;z-index:20;flex:0 0 auto;height:var(--topH);
+  display:flex;align-items:center;justify-content:space-between;gap:10px}
+.side{display:flex;flex-direction:column;gap:5px}
+.youSide{align-items:flex-end}
+.sideName{font-size:10px;letter-spacing:3px;color:#9fb0d8;text-shadow:0 1px 3px #000}
+.enemySide .sideName{color:#ff8a7a;font-size:13px;letter-spacing:4px;
+  text-shadow:0 0 12px rgba(255,60,40,.7),0 2px 3px #000}
+.pips{display:flex;gap:5px}
+.pips i{width:26px;height:16px;background:linear-gradient(180deg,#e6ebf5,#7b8496);
+  clip-path:polygon(14% 0,100% 0,86% 100%,0 100%);
+  box-shadow:0 0 10px rgba(220,230,255,.5);transition:.25s}
+.pips i.gone{background:#20242e;box-shadow:none;opacity:.35;transform:scaleY(.5)}
+.pips i.breaking{animation:pipBreak .42s ease-out}
+@keyframes pipBreak{0%{transform:scale(1.5);filter:brightness(3)}100%{transform:scale(1)}}
+.pips.shield i{background:linear-gradient(180deg,#8fe3ff,#1c74a8);
+  clip-path:polygon(0 0,86% 0,100% 100%,14% 100%);box-shadow:0 0 10px rgba(80,200,255,.55)}
+.pips.shield i.gone{background:#1a2230;box-shadow:none}
 
-/* ---------- layout ---------- */
-#ui{position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;
-  padding:calc(env(safe-area-inset-top) + var(--topbarH)) 14px calc(env(safe-area-inset-bottom) + 10px);
-  transition:opacity .3s}
+/* ============ ゲージ ============ */
+#gauges{position:relative;z-index:20;flex:0 0 auto;height:var(--gaugeH);display:flex;gap:10px;align-items:center}
+.gauge{flex:1;display:flex;align-items:center;gap:6px}
+.gLabel{font-size:8px;letter-spacing:2px;color:#6f7fa8;flex:0 0 auto}
+.gBar{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;
+  box-shadow:inset 0 0 5px rgba(0,0,0,.8)}
+.gBar i{display:block;height:100%;width:0;transition:width .3s cubic-bezier(.2,1.3,.4,1)}
+.clash .gBar i{background:linear-gradient(90deg,#7cd4ff,#ff4dff);box-shadow:0 0 12px #ff4dff}
+.yaku .gBar i{background:linear-gradient(90deg,#ffe89a,#ff7a18);box-shadow:0 0 12px #ffb400}
+.gauge.full .gLabel{color:#ffd45e}
+.gauge.full .gBar{animation:gaugePulse .7s ease-in-out infinite}
+@keyframes gaugePulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.9)}}
 
-/* HUDは暗転演出より前面。連勝数は決着の瞬間こそ読ませる。 */
-#topbar{position:absolute;top:0;left:0;right:0;z-index:34;pointer-events:none;
-  padding:calc(env(safe-area-inset-top) + 8px) 14px 0;transition:opacity .3s}
-body.menu #topbar,body.menu #ui{opacity:0}
+/* ============ 中央：敵 ============ */
+#stage{position:relative;z-index:20;flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center}
+#goroWrap{position:relative;height:100%;display:flex;align-items:center;justify-content:center}
+#goro{height:100%;max-height:300px;display:flex;align-items:center}
+#goroSvg{height:100%;width:auto;max-width:88vw;overflow:visible;
+  filter:drop-shadow(0 12px 26px rgba(0,0,0,.75))}
 
-#hud{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
-.streakBox{position:relative;padding:6px 0 0 2px}
-.streakNum{font-size:58px;line-height:1;padding-right:6px;letter-spacing:-3px;font-style:italic;font-weight:900;
-  background:linear-gradient(178deg,#ffffff 6%,#ffe89a 40%,#ffb400 68%,#ff5e18 100%);
-  -webkit-background-clip:text;background-clip:text;color:transparent;
-  filter:drop-shadow(0 0 16px var(--accGlow,rgba(255,180,0,.8))) drop-shadow(0 2px 0 rgba(0,0,0,.75))}
-.streakNum.pop{animation:numPop .42s cubic-bezier(.2,1.8,.35,1)}
-@keyframes numPop{0%{transform:scale(1)}30%{transform:scale(1.55) rotate(-5deg)}100%{transform:scale(1)}}
-.streakLbl{font-size:10px;letter-spacing:6px;color:#b9c8ee;margin-top:1px;text-shadow:0 0 10px rgba(90,140,255,.8),0 1px 2px #000}
-.hudRight{text-align:right;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
-.badge{font-size:10px;letter-spacing:2px;padding:5px 10px;border-radius:3px;
-  border:1px solid rgba(255,255,255,.24);background:rgba(8,12,30,.6);color:#cfdcff}
-.badge b{color:#ffd45e;font-size:12px}
-#stageName{font-size:12px;letter-spacing:3px;padding:6px 12px;border-radius:3px;
-  border:1px solid var(--acc,#4d7cff);color:#fff;background:rgba(10,14,36,.62);
-  box-shadow:0 0 18px var(--accGlow,rgba(77,124,255,.5)) inset,0 0 14px var(--accGlow,rgba(77,124,255,.4));
-  transition:.4s}
-#modeBadge{display:none;font-size:9px;letter-spacing:2px;padding:4px 9px;border-radius:3px;
-  border:1px dashed rgba(255,255,255,.5);color:#ffd45e;background:rgba(30,20,0,.6)}
-#modeBadge.on{display:block}
+/* 仮面の破壊段階 */
+#goroSvg .ck{opacity:0;transition:opacity .3s}
+#goroSvg.m2 .ck0,#goroSvg.m2 .ck1{opacity:1}
+#goroSvg.m1 .ck{opacity:1}
+#goroSvg.m1 #maskR{opacity:0;transform:translate(40px,60px) rotate(38deg);transition:.5s ease-in}
+#goroSvg.m0 #goroMask{opacity:0;transform:translateY(70px) scale(.8);transition:.5s ease-in}
+#goroSvg #goroFace{opacity:0;transition:opacity .4s}
+#goroSvg.m1 #goroFace,#goroSvg.m0 #goroFace{opacity:1}
+#goroSvg.m1 #goroAura{opacity:.30}
+#goroSvg.m0 #goroAura{opacity:.42}
+#goroSvg #goroAura{filter:blur(26px);transition:opacity .5s}
 
-/* 期待度メーター */
-#tension{margin-top:8px;height:4px;border-radius:2px;background:rgba(255,255,255,.09);overflow:hidden;
-  position:relative;box-shadow:inset 0 0 6px rgba(0,0,0,.7)}
-#tensionFill{position:absolute;inset:0 100% 0 0;background:var(--tc,#00e5ff);
-  box-shadow:0 0 14px var(--tc,#00e5ff);transition:right .45s cubic-bezier(.2,1.3,.4,1),background .3s}
-#tensionRow{position:relative;height:0}
-#tensionLbl{position:absolute;right:0;top:8px;font-size:10px;letter-spacing:3px;color:var(--tc,#00e5ff);
-  opacity:0;text-shadow:0 0 10px currentColor;transition:opacity .3s}
-#tensionLbl.on{opacity:1}
-#chainPips{position:absolute;left:0;top:8px;display:flex;gap:4px;opacity:0;transition:opacity .3s}
-#chainPips.on{opacity:1}
-#chainPips i{width:16px;height:4px;border-radius:2px;background:#ff4dff;box-shadow:0 0 10px #ff4dff}
+/* ポーズ */
+#goroSvg{transform-origin:50% 92%}
+#goroSvg.pose-idle{animation:goroBreathe 2.4s ease-in-out infinite}
+@keyframes goroBreathe{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-5px) scale(1.02)}}
+#goroSvg.pose-charge{animation:goroCharge .5s ease-out forwards}
+@keyframes goroCharge{to{transform:translateY(6px) scale(1.07)}}
+#goroSvg.pose-attack{animation:goroAttack .34s cubic-bezier(.2,1.6,.4,1)}
+@keyframes goroAttack{0%{transform:scale(1.07)}40%{transform:translateY(14px) scale(1.16)}100%{transform:scale(1)}}
+#goroSvg.pose-hit{animation:goroHit .45s}
+@keyframes goroHit{0%{transform:translateX(0) scale(1)}
+  15%{transform:translateX(-14px) scale(.95);filter:brightness(4)}
+  35%{transform:translateX(12px) scale(.97)}60%{transform:translateX(-6px)}100%{transform:translateX(0) scale(1)}}
+#goroSvg.pose-roar{animation:goroRoar .9s cubic-bezier(.2,1.4,.3,1)}
+@keyframes goroRoar{0%{transform:scale(1)}30%{transform:scale(1.22) translateY(-8px)}100%{transform:scale(1.05)}}
 
-/* ---------- enemy ---------- */
-#arena{flex:1 1 auto;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:0}
-#enemyWrap{position:relative;display:flex;flex-direction:column;align-items:center;gap:7px}
-#enemy{position:relative;width:min(48vw,196px);aspect-ratio:1/1;display:grid;place-items:center;
-  animation:breathe 2.6s ease-in-out infinite}
-@keyframes breathe{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-7px) scale(1.035)}}
-.enemyGlow{position:absolute;inset:-26%;border-radius:50%;
-  background:radial-gradient(circle,var(--ec,#ff3b5c) 0%,transparent 62%);opacity:.4;filter:blur(16px);
-  animation:pulse 2.6s ease-in-out infinite}
-@keyframes pulse{0%,100%{opacity:.3;transform:scale(1)}50%{opacity:.62;transform:scale(1.12)}}
-.enemyBody{position:relative;width:82%;height:82%;border-radius:46% 46% 40% 40%/52% 52% 44% 44%;
-  background:
-    radial-gradient(circle at 32% 24%,rgba(255,255,255,.42),transparent 46%),
-    linear-gradient(158deg,var(--ec,#ff3b5c) 0%,color-mix(in srgb,var(--ec,#ff3b5c) 45%,#120324) 46%,#0a0316 100%);
-  border:2px solid rgba(255,255,255,.34);
-  box-shadow:0 0 44px var(--ec,#ff3b5c),inset 0 -20px 40px rgba(0,0,0,.7),
-    inset 0 14px 30px rgba(255,255,255,.2),inset 0 0 0 1px rgba(255,255,255,.1)}
-.enemyBody::after{content:"";position:absolute;left:12%;right:12%;bottom:9%;height:16%;border-radius:50%;
-  background:radial-gradient(ellipse,var(--ec,#ff3b5c),transparent 68%);opacity:.55;filter:blur(5px)}
-.visor{position:absolute;top:29%;left:5%;right:5%;height:24%;z-index:1;
-  background:linear-gradient(180deg,rgba(3,1,10,.95),rgba(3,1,10,.55));
-  clip-path:polygon(7% 0,93% 0,100% 58%,50% 100%,0 58%);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.22)}
-.horn{position:absolute;top:-4%;width:17%;height:27%;z-index:1;
-  background:linear-gradient(180deg,#ffffff,var(--ec,#ff3b5c) 70%);
-  clip-path:polygon(50% 0,100% 100%,0 100%);filter:drop-shadow(0 0 10px var(--ec,#ff3b5c))}
-.horn.l{left:8%;transform:rotate(-22deg)}
-.horn.r{right:8%;transform:rotate(22deg)}
-.eyes{position:absolute;top:36%;left:0;right:0;display:flex;justify-content:center;gap:13%;z-index:2}
-.eye{position:relative;width:21%;padding-bottom:9.5%;background:#fff;
-  box-shadow:0 0 14px var(--eyeC,#fff),0 0 34px var(--eyeC,#fff);
-  clip-path:polygon(0 0,100% 32%,100% 100%,0 64%);
-  animation:blink 4.4s infinite;transition:background .3s,box-shadow .3s,transform .3s}
-.eye:last-child{clip-path:polygon(0 32%,100% 0,100% 64%,0 100%)}
-@keyframes blink{0%,94%,100%{transform:scaleY(1)}96%{transform:scaleY(.08)}}
-#enemy.hot{animation:breathe 1s ease-in-out infinite}
-#enemy.hot .enemyGlow{animation:pulse .9s ease-in-out infinite}
-#enemy.hot .eye{transform:scaleY(.66)}
-.mouth{position:absolute;top:62%;left:50%;transform:translateX(-50%);width:32%;height:7%;z-index:2;
-  background:#06010e;
-  clip-path:polygon(0 0,100% 0,100% 34%,87% 100%,74% 34%,61% 100%,48% 34%,35% 100%,22% 34%,10% 100%,0 34%)}
-.orbit{position:absolute;inset:-8%;pointer-events:none;animation:auraSpin 9s linear infinite}
-.orbit i{position:absolute;top:0;left:50%;width:9px;height:9px;margin-left:-4.5px;border-radius:2px;
-  background:var(--ec,#ff3b5c);box-shadow:0 0 12px var(--ec,#ff3b5c);transform:rotate(45deg)}
-.orbit i:nth-child(2){top:auto;bottom:0}
-.orbit i:nth-child(3){top:50%;left:0;margin-top:-4.5px}
-.orbit i:nth-child(4){top:50%;left:auto;right:0;margin-top:-4.5px}
+/* 光る手 ＝ 読むべき唯一の情報。敵の頭と重ならない右上に固定し、必ずラベルを添える */
+#ghostHand{position:absolute;top:0;right:0;width:min(31vw,124px);
+  opacity:0;pointer-events:none;z-index:22;transition:opacity .2s}
+#ghostHand::after{content:"出す手";position:absolute;left:0;right:0;bottom:-13px;text-align:center;
+  font-size:9px;letter-spacing:3px;color:#fff;opacity:.85;text-shadow:0 1px 3px #000}
+#ghostHand.on{opacity:1;animation:ghostIn .3s cubic-bezier(.2,1.7,.35,1) forwards,ghostPulse 1s ease-in-out infinite .3s}
+@keyframes ghostIn{from{transform:scale(.55);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes ghostPulse{0%,100%{filter:drop-shadow(0 0 12px currentColor) drop-shadow(0 0 26px currentColor)}
+  50%{filter:drop-shadow(0 0 22px currentColor) drop-shadow(0 0 48px currentColor) brightness(1.25)}}
+#ghostHand .handSVG{width:100%;height:auto;display:block}
+#ghostHand .ho{fill:#fff;stroke:#fff;stroke-width:10;stroke-linejoin:round;opacity:.9}
+#ghostHand .hf{fill:currentColor}
+#ghostHand .hl{fill:#fff;opacity:.28}
+#ghostHand .hd{fill:none;stroke:rgba(0,0,0,.3);stroke-width:5;stroke-linecap:round}
 
-/* 決着中は敵の名札・状態・セリフを消して、結果テキストと重ならせない */
-#enemyName,#enemyHp,#enemyTell,#enemyState{transition:opacity .18s}
-body.battling #enemyName,body.battling #enemyHp,body.battling #enemyState{opacity:0}
-#enemyName{font-size:13px;letter-spacing:3px;color:#fff;text-shadow:0 0 12px var(--ec,#ff3b5c),0 2px 3px rgba(0,0,0,.9)}
-#enemyHp{display:flex;gap:5px}
-#enemyHp i{width:22px;height:4px;border-radius:2px;background:rgba(255,255,255,.16);transition:.3s}
-#enemyHp i.on{background:var(--ec,#ff3b5c);box-shadow:0 0 10px var(--ec,#ff3b5c)}
-#enemyState{font-size:10px;letter-spacing:2px;color:#9fb0d8;text-shadow:0 1px 3px #000}
-#enemyTell{font-size:12px;font-weight:700;letter-spacing:.5px;color:#e6eeff;
-  background:rgba(6,10,26,.78);border:1px solid rgba(255,255,255,.2);border-radius:14px;
-  padding:6px 14px;max-width:84vw;text-align:center;
-  box-shadow:0 4px 20px rgba(0,0,0,.6);transition:.25s}
-#enemyTell.hit{border-color:#ffd45e;color:#ffe9a8;box-shadow:0 0 24px rgba(255,212,94,.55)}
-#enemyTell.missed{border-color:#8a5cff;color:#d3c0ff;box-shadow:0 0 24px rgba(138,92,255,.5)}
-/* 決着中の「読み的中／外し」は結果テキストと縦位置が衝突するため画面上部へ退避 */
-/* 決着中は手・VS・結果テキストと衝突しない左上の空きへ固定する */
-body.battling #enemyTell{opacity:1;z-index:29;position:fixed;
-  top:calc(env(safe-area-inset-top) + var(--topbarH) + 6px);left:14px;
-  transform:none;background:rgba(4,7,20,.94);white-space:nowrap;font-size:11px}
+/* 履歴 */
+#history{position:absolute;left:0;top:2px;display:flex;flex-direction:column;gap:4px;z-index:21}
+#history .hcell{width:26px;height:26px;border-radius:7px;background:rgba(6,10,26,.7);
+  border:1px solid rgba(255,255,255,.16);display:grid;place-items:center}
+#history .hcell svg{width:17px;height:17px}
+#history .hlbl{font-size:7px;letter-spacing:1px;color:#6f7fa8;text-align:center}
 
-#foreAura{position:absolute;inset:-16%;border-radius:50%;pointer-events:none;opacity:0;
-  border:3px solid var(--fc,#00e5ff);
-  box-shadow:0 0 44px var(--fc,#00e5ff),inset 0 0 44px var(--fc,#00e5ff)}
-#foreAura.on{opacity:.9;animation:auraSpin 2.4s linear infinite,auraBeat .8s ease-in-out infinite}
-@keyframes auraSpin{to{transform:rotate(360deg)}}
-@keyframes auraBeat{0%,100%{filter:brightness(1)}50%{filter:brightness(2)}}
+/* コーチ（チュートリアル専用の一言） */
+#coach{position:absolute;left:0;right:0;bottom:-2px;text-align:center;font-size:13px;letter-spacing:1px;
+  color:#ffd45e;text-shadow:0 0 12px rgba(255,180,0,.6),0 2px 4px #000;opacity:0;transition:opacity .25s;z-index:23}
+#coach.on{opacity:1;animation:coachBob 1.1s ease-in-out infinite}
+@keyframes coachBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
 
-/* 訓練戦の手プレビュー：敵と重ならないよう、arena上端の横並びバッジにする */
-#preview{position:absolute;top:0;left:50%;transform:translateX(-50%);
-  display:flex;align-items:center;gap:9px;white-space:nowrap;
-  padding:6px 14px 6px 8px;border-radius:26px;
-  background:rgba(6,10,26,.86);border:1px solid #ffd45e;
-  box-shadow:0 0 20px rgba(255,212,94,.35);
-  z-index:22;opacity:0;pointer-events:none;transition:opacity .25s}
-#preview.on{opacity:1}
-#preview .handSVG{width:38px;height:38px;filter:drop-shadow(0 0 8px currentColor)}
-.previewLbl{font-size:11px;letter-spacing:1px;color:#ffe9a8;text-shadow:0 1px 3px #000}
+/* ============ 宣言と制限時間 ============ */
+#declare{position:relative;z-index:20;flex:0 0 auto;height:var(--declH);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px}
+#declText{font-size:clamp(19px,5.6vw,26px);letter-spacing:1px;text-align:center;line-height:1.25;
+  color:#fff;text-shadow:0 2px 10px #000,0 0 22px rgba(255,90,60,.45);
+  padding:7px 16px;border-radius:12px;background:rgba(8,4,14,.72);border:1px solid rgba(255,120,90,.42);
+  max-width:94vw}
+#declText.pop{animation:declPop .3s cubic-bezier(.2,1.7,.35,1)}
+@keyframes declPop{0%{transform:scale(.82);opacity:.4}100%{transform:scale(1);opacity:1}}
+#declText.lie{border-color:#ff2d6f;box-shadow:0 0 18px rgba(255,45,111,.5)}
+#timeBar{width:min(78vw,320px);height:8px;border-radius:5px;background:rgba(255,255,255,.10);overflow:hidden;
+  box-shadow:inset 0 0 6px rgba(0,0,0,.8)}
+#timeFill{display:block;height:100%;width:100%;background:linear-gradient(90deg,#7cff4d,#ffd45e);
+  box-shadow:0 0 12px #ffd45e;transform-origin:left center}
+#timeFill.warn{background:linear-gradient(90deg,#ff4d4d,#ff2d6f);box-shadow:0 0 16px #ff2d6f}
 
-/* ---------- reveal ---------- */
-#battleScrim{position:absolute;inset:0;z-index:24;opacity:0;pointer-events:none;
-  background:radial-gradient(ellipse at 50% 42%,rgba(2,4,14,.62),rgba(2,4,14,.93) 78%);
-  transition:opacity .2s}
-#battleScrim.on{opacity:1}
-#reveal{position:absolute;inset:0;pointer-events:none;z-index:26}
-.handSlot{position:absolute;width:min(38vw,158px);opacity:0}
-.handSlot.e{right:7vw;top:11%}
-.handSlot.p{left:7vw;top:34%}
-.handSlot.show{animation:slam .34s cubic-bezier(.15,1.6,.4,1) forwards}
-@keyframes slam{0%{opacity:0;transform:scale(2.1) rotate(-14deg)}60%{opacity:1;transform:scale(.92) rotate(3deg)}100%{opacity:1;transform:scale(1) rotate(0)}}
-.handSVG{width:100%;height:auto;display:block}
-.handSVG .ho{fill:#fff;stroke:#fff;stroke-width:10;stroke-linejoin:round;stroke-linecap:round}
-.handSVG .hf{fill:currentColor}
-.handSVG .hl{fill:#fff;opacity:.30}
-.handSVG .hd{fill:none;stroke:rgba(0,0,0,.34);stroke-width:5;stroke-linecap:round}
-.handSlot{filter:drop-shadow(0 0 16px currentColor) drop-shadow(0 0 42px currentColor) drop-shadow(0 6px 2px rgba(0,0,0,.6))}
-#vsMark{position:absolute;left:0;right:0;top:26%;text-align:center;
-  font-size:clamp(46px,15vw,92px);font-style:italic;font-weight:900;letter-spacing:-4px;
-  color:#fff;opacity:0;text-shadow:0 0 26px #ff2d3f,0 0 60px #ff2d3f,0 4px 0 rgba(0,0,0,.6)}
-#vsMark.show{animation:vsIn .5s cubic-bezier(.2,1.6,.3,1) forwards}
-@keyframes vsIn{0%{opacity:0;transform:scale(3) rotate(-20deg)}70%{opacity:1;transform:scale(.9) rotate(4deg)}100%{opacity:1;transform:scale(1) rotate(-6deg)}}
-
-/* ---------- center ---------- */
-#center{position:absolute;inset:0;pointer-events:none;z-index:28}
-#bigText{position:absolute;left:0;right:0;top:56%;
-  font-size:clamp(38px,12.5vw,80px);font-style:italic;font-weight:900;letter-spacing:-1px;
-  text-align:center;line-height:.95;opacity:0;white-space:pre-line;
-  text-shadow:0 4px 16px rgba(0,0,0,.85),0 0 40px rgba(0,0,0,.6)}
-#bigText.in{animation:bigIn .38s cubic-bezier(.15,1.7,.35,1) forwards}
-#bigText.out{animation:bigOut .22s ease-in forwards}
-@keyframes bigIn{0%{opacity:0;transform:scale(2.6) rotate(-8deg);filter:blur(8px)}
-  70%{opacity:1;transform:scale(.92) rotate(2deg);filter:blur(0)}100%{opacity:1;transform:scale(1) rotate(-2deg)}}
-@keyframes bigOut{to{opacity:0;transform:scale(1.25);filter:blur(6px)}}
-#subText{position:absolute;left:0;right:0;top:71%;text-align:center;
-  font-size:16px;letter-spacing:5px;opacity:0;color:#fff;
-  text-shadow:0 0 14px currentColor,0 2px 6px #000}
-#subText.in{animation:subIn .3s ease-out forwards}
-@keyframes subIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
-#count{position:absolute;left:0;right:0;top:30%;text-align:center;
-  font-size:clamp(76px,24vw,170px);font-style:italic;font-weight:900;
-  color:#fff;opacity:0;text-shadow:0 0 30px #4d7cff,0 0 70px #4d7cff}
-#count.tick{animation:cnt .56s cubic-bezier(.2,1.3,.4,1) forwards}
-@keyframes cnt{0%{opacity:0;transform:scale(2.4);filter:blur(10px)}
-  35%{opacity:1;transform:scale(1);filter:blur(0)}75%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(.7)}}
-
-/* ---------- controls ---------- */
-#controls{flex:0 0 auto;display:flex;gap:12px;justify-content:center;align-items:flex-end;
-  padding:24px 4px 4px;margin:0 -14px;position:relative;
-  transition:opacity .25s,transform .3s}
-#controls::before{content:"";position:absolute;left:0;right:0;bottom:-60px;top:-16px;
-  background:linear-gradient(0deg,rgba(2,3,10,.96) 30%,rgba(2,3,10,.74) 62%,transparent);pointer-events:none}
-#controls.locked{opacity:.16;transform:translateY(20px) scale(.93);pointer-events:none;filter:grayscale(.75)}
-.hbtn{position:relative;z-index:1;flex:1 1 0;max-width:110px;border:none;background:none;cursor:pointer;padding:0;
-  display:flex;flex-direction:column;align-items:center;gap:6px;
-  font-family:inherit;animation:float 3.2s ease-in-out infinite}
-.hbtn:nth-child(2){animation-delay:-1.05s}.hbtn:nth-child(3){animation-delay:-2.1s}
-@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+/* ============ 下部：3つの手 ============ */
+#controls{position:relative;z-index:20;flex:0 0 auto;height:var(--ctrlH);
+  display:flex;gap:12px;justify-content:center;align-items:center;transition:opacity .2s,transform .25s}
+#controls.locked{opacity:.2;transform:scale(.94);pointer-events:none;filter:grayscale(.8)}
+.hbtn{position:relative;flex:1 1 0;max-width:112px;border:none;background:none;cursor:pointer;padding:0;
+  display:flex;flex-direction:column;align-items:center;gap:6px;font-family:inherit}
 .hbtn .disc{position:relative;width:100%;aspect-ratio:1/1;display:grid;place-items:center}
-.hbtn .ring{position:absolute;inset:0;border-radius:50%;border:2px solid currentColor;
-  box-shadow:0 0 24px currentColor,inset 0 0 30px rgba(255,255,255,.16);
-  background:radial-gradient(circle at 50% 28%,rgba(255,255,255,.2),rgba(4,6,18,.92) 70%)}
-.hbtn .ring::after{content:"";position:absolute;inset:-8px;border-radius:50%;border:1px solid currentColor;
-  opacity:.35;animation:ringPulse 2.2s ease-out infinite}
-@keyframes ringPulse{0%{transform:scale(.94);opacity:.55}100%{transform:scale(1.24);opacity:0}}
-.hbtn .ic{position:relative;width:60%;color:currentColor;filter:drop-shadow(0 0 12px currentColor)}
+.hbtn .ring{position:absolute;inset:0;border-radius:50%;border:2.5px solid currentColor;
+  box-shadow:0 0 22px currentColor,inset 0 0 26px rgba(255,255,255,.14);
+  background:radial-gradient(circle at 50% 28%,rgba(255,255,255,.18),rgba(4,6,18,.94) 72%)}
+.hbtn .ic{position:relative;width:62%;color:currentColor;filter:drop-shadow(0 0 10px currentColor)}
+.hbtn .ic svg{width:100%;height:auto;display:block}
+.hbtn .ic .ho{fill:#fff;stroke:#fff;stroke-width:10;stroke-linejoin:round}
+.hbtn .ic .hf{fill:currentColor}
+.hbtn .ic .hl{fill:#fff;opacity:.3}
+.hbtn .ic .hd{fill:none;stroke:rgba(0,0,0,.34);stroke-width:5;stroke-linecap:round}
 .hbtn .nm{font-size:11px;letter-spacing:3px;color:#fff;opacity:.9;text-shadow:0 1px 3px #000}
-.hbtn:active .disc{transform:scale(.9)}
+.hbtn:active .disc{transform:scale(.88)}
 .hbtn.rock{color:#ff2d3f}.hbtn.scissors{color:#00d4ff}.hbtn.paper{color:#ffb400}
+.hbtn.picked .ring{animation:pickFlash .3s ease-out}
+@keyframes pickFlash{0%{filter:brightness(3.5)}100%{filter:brightness(1)}}
+/* チュートリアルで押すべきボタンを指し示す */
+.hbtn.teach::after{content:"";position:absolute;inset:-9px;border-radius:50%;border:3px solid #ffd45e;
+  animation:teachRing 1s ease-out infinite}
+@keyframes teachRing{0%{transform:scale(.92);opacity:1}100%{transform:scale(1.2);opacity:0}}
 
-/* ---------- overlays ---------- */
-#cutin{position:absolute;inset:0;z-index:50;pointer-events:none;opacity:0;display:grid;place-items:center;overflow:hidden}
-#cutin.on{opacity:1}
-.cutBand{position:absolute;left:-12%;right:-12%;height:36%;transform:skewY(-7deg);
-  background:linear-gradient(90deg,transparent,var(--cc,#ffb400) 16%,#fff 50%,var(--cc,#ffb400) 84%,transparent);
-  opacity:.94}
-#cutin.on .cutBand{animation:bandIn .5s cubic-bezier(.2,1.4,.3,1) forwards}
-@keyframes bandIn{0%{transform:skewY(-7deg) translateX(-120%) scaleY(.2)}55%,100%{transform:skewY(-7deg) translateX(0) scaleY(1)}}
-.cutText{position:relative;font-size:clamp(38px,13vw,86px);font-weight:900;font-style:italic;letter-spacing:6px;
-  color:#12030a;text-shadow:0 0 20px #fff,3px 3px 0 #fff}
-#cutin.on .cutText{animation:cutT .5s cubic-bezier(.2,1.6,.3,1) forwards}
-@keyframes cutT{0%{opacity:0;transform:scale(2.4) rotate(-12deg)}60%{opacity:1;transform:scale(.95)}100%{opacity:1;transform:scale(1) rotate(-3deg)}}
+/* ============ 決着 ============ */
+#clashLayer{position:absolute;inset:0;z-index:26;pointer-events:none}
+#clashLayer .hand{position:absolute;width:min(34vw,140px);opacity:0;top:38%}
+#clashLayer .ph{left:4vw}
+#clashLayer .eh{right:4vw}
+#clashLayer .hand svg{width:100%;height:auto;display:block}
+#clashLayer .ho{fill:#fff;stroke:#fff;stroke-width:10;stroke-linejoin:round}
+#clashLayer .hf{fill:currentColor}
+#clashLayer .hl{fill:#fff;opacity:.3}
+#clashLayer .hd{fill:none;stroke:rgba(0,0,0,.34);stroke-width:5;stroke-linecap:round}
+#clashLayer .hand{filter:drop-shadow(0 0 14px currentColor) drop-shadow(0 0 34px currentColor)}
+#clashLayer .hand.in{animation:handIn .26s cubic-bezier(.15,1.7,.4,1) forwards}
+@keyframes handIn{0%{opacity:0;transform:scale(1.9) rotate(-12deg)}100%{opacity:1;transform:scale(1)}}
+/* あいこは中央で激突させる */
+#clashLayer.collide .ph{animation:collideL .3s cubic-bezier(.3,1.5,.4,1) forwards}
+#clashLayer.collide .eh{animation:collideR .3s cubic-bezier(.3,1.5,.4,1) forwards}
+@keyframes collideL{0%{opacity:1;transform:translateX(0)}100%{opacity:1;transform:translateX(28vw) scale(1.08)}}
+@keyframes collideR{0%{opacity:1;transform:translateX(0)}100%{opacity:1;transform:translateX(-28vw) scale(1.08)}}
 
-#yakumono{position:absolute;left:50%;top:-60%;z-index:48;width:min(74vw,320px);transform:translateX(-50%);
-  opacity:0;pointer-events:none;color:#ffd45e;filter:drop-shadow(0 0 30px #ffb400) drop-shadow(0 0 70px #ff7a18)}
-#yakumono.drop{animation:yaku 1.15s cubic-bezier(.5,0,.75,0) forwards}
-@keyframes yaku{0%{opacity:0;top:-60%;transform:translateX(-50%) scale(.6) rotate(-8deg)}
-  12%{opacity:1}62%{top:26%;transform:translateX(-50%) scale(1.12) rotate(2deg)}
-  72%{top:22%;transform:translateX(-50%) scale(1.02)}100%{opacity:1;top:24%;transform:translateX(-50%) scale(1.06)}}
+#center{position:absolute;inset:0;z-index:28;pointer-events:none}
+#bigText{position:absolute;left:0;right:0;top:30%;text-align:center;white-space:pre-line;
+  font-size:clamp(38px,12vw,74px);font-style:italic;font-weight:900;line-height:.98;opacity:0;
+  text-shadow:0 4px 16px rgba(0,0,0,.9)}
+#bigText.in{animation:bigIn .3s cubic-bezier(.15,1.7,.35,1) forwards}
+#bigText.out{animation:bigOut .18s ease-in forwards}
+@keyframes bigIn{0%{opacity:0;transform:scale(2.2) rotate(-7deg);filter:blur(7px)}
+  70%{opacity:1;transform:scale(.94);filter:blur(0)}100%{opacity:1;transform:scale(1) rotate(-2deg)}}
+@keyframes bigOut{to{opacity:0;transform:scale(1.2);filter:blur(5px)}}
+#subText{position:absolute;left:0;right:0;top:47%;text-align:center;font-size:15px;letter-spacing:4px;
+  opacity:0;text-shadow:0 0 12px currentColor,0 2px 6px #000}
+#subText.in{animation:subIn .24s ease-out forwards}
+@keyframes subIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.rbText{background:linear-gradient(92deg,#ff2d6f,#ffb400,#7cff4d,#00d4ff,#a45cff,#ff2d6f);
+  background-size:300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;
+  animation:rb 1.1s linear infinite;filter:drop-shadow(0 0 16px rgba(255,255,255,.9))}
+@keyframes rb{to{background-position:300% 0}}
+
+/* ============ CLASH RUSH バナー ============ */
+#rushBanner{position:absolute;inset:0;z-index:52;display:grid;place-items:center;pointer-events:none;opacity:0}
+#rushBanner.on{animation:rushIn 1.5s forwards}
+@keyframes rushIn{0%{opacity:0}12%,72%{opacity:1}100%{opacity:0}}
+#rushBanner .rbInner{position:relative;text-align:center;padding:22px 30px;
+  background:linear-gradient(90deg,transparent,rgba(0,0,0,.92) 14%,rgba(0,0,0,.92) 86%,transparent);
+  width:100%}
+#rushBanner .rb1{font-size:11px;letter-spacing:10px;color:#7cd4ff;margin-bottom:6px}
+#rushBanner .rb2{font-size:clamp(30px,10vw,60px);font-style:italic;font-weight:900;letter-spacing:2px;
+  background:linear-gradient(92deg,#7cd4ff,#ff4dff,#ffd45e);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 0 18px rgba(255,80,255,.8))}
+#rushBanner.on .rbInner{animation:bigIn .5s cubic-bezier(.15,1.6,.35,1) forwards}
+
+/* ============ 役物（自分で落とす） ============ */
+/* 「下へ引け」が敵の顔を覆わないよう上寄せにする */
+#finisher{position:absolute;inset:0;z-index:56;display:flex;flex-direction:column;
+  align-items:center;justify-content:flex-start;padding-top:20vh;gap:14px;
+  background:radial-gradient(ellipse at 50% 50%,rgba(60,20,0,.5),rgba(2,1,6,.9) 72%);
+  touch-action:none}
+#finisher[hidden]{display:none}
+#finText{font-size:clamp(34px,11vw,64px);font-style:italic;font-weight:900;letter-spacing:6px;
+  background:linear-gradient(180deg,#fff,#ffd45e 55%,#ff7a18);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 0 22px rgba(255,180,0,.9));animation:finPulse .7s ease-in-out infinite}
+@keyframes finPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+#finArrow{font-size:26px;line-height:1.1;color:#ffd45e;text-shadow:0 0 16px #ffb400;
+  animation:finArrow 1s ease-in-out infinite}
+@keyframes finArrow{0%{transform:translateY(-10px);opacity:.4}100%{transform:translateY(22px);opacity:1}}
+#yakumono{position:absolute;left:50%;top:-70%;z-index:54;width:min(78vw,330px);transform:translateX(-50%);
+  opacity:0;pointer-events:none;color:#ffd45e;
+  filter:drop-shadow(0 0 30px #ffb400) drop-shadow(0 0 70px #ff7a18)}
+#yakumono svg{width:100%;height:auto;display:block}
+#yakumono .ho{fill:#fff;stroke:#fff;stroke-width:10;stroke-linejoin:round}
+#yakumono .hf{fill:currentColor}
+#yakumono .hl{fill:#fff;opacity:.3}
+#yakumono .hd{fill:none;stroke:rgba(0,0,0,.34);stroke-width:5;stroke-linecap:round}
+#yakumono.drop{animation:yakuDrop .62s cubic-bezier(.55,0,.85,.2) forwards}
+@keyframes yakuDrop{0%{opacity:0;top:-70%;transform:translateX(-50%) scale(.65)}
+  10%{opacity:1}100%{opacity:1;top:30%;transform:translateX(-50%) scale(1.14)}}
 
 #freeze{position:absolute;inset:0;z-index:55;pointer-events:none;opacity:0;
-  background:radial-gradient(circle at 50% 45%,rgba(210,240,255,.28),rgba(2,6,20,.88) 70%);
+  background:radial-gradient(circle at 50% 45%,rgba(220,240,255,.26),rgba(2,6,20,.86) 70%);
   backdrop-filter:saturate(.12) contrast(1.4) brightness(1.2)}
 #freeze.on{opacity:1}
 #freeze svg{position:absolute;inset:0;width:100%;height:100%}
 #freeze .crk{stroke:#eaf7ff;stroke-width:2.2;fill:none;filter:drop-shadow(0 0 8px #9fe4ff);
-  stroke-dasharray:600;stroke-dashoffset:600;animation:crack .5s ease-out forwards}
+  stroke-dasharray:600;stroke-dashoffset:600;animation:crack .4s ease-out forwards}
 @keyframes crack{to{stroke-dashoffset:0}}
-#freezeTxt{position:absolute;inset:0;display:grid;place-items:center;font-size:clamp(30px,10vw,62px);
-  letter-spacing:12px;font-style:italic;color:#eaf9ff;text-shadow:0 0 24px #7fdcff,0 0 60px #2fa8ff;opacity:0}
-#freeze.on #freezeTxt{animation:subIn .4s .25s forwards}
 
-.rbText{background:linear-gradient(92deg,#ff2d6f,#ffb400,#7cff4d,#00d4ff,#a45cff,#ff2d6f);
-  background-size:300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;
-  animation:rb 1.1s linear infinite;filter:drop-shadow(0 0 18px rgba(255,255,255,.9))}
-@keyframes rb{to{background-position:300% 0}}
-
-#stageUp{position:absolute;inset:0;z-index:52;display:grid;place-items:center;pointer-events:none;opacity:0}
-#stageUp.on{animation:suIn 1.5s forwards}
-@keyframes suIn{0%{opacity:0}12%,78%{opacity:1}100%{opacity:0}}
-#stageUp .band{position:absolute;left:0;right:0;height:30%;
-  background:linear-gradient(90deg,transparent,rgba(0,0,0,.9) 12%,rgba(0,0,0,.9) 88%,transparent)}
-#stageUp .t1{position:relative;font-size:11px;letter-spacing:9px;color:#ffd45e;margin-bottom:8px}
-#stageUp .t2{position:relative;font-size:clamp(28px,9.5vw,58px);font-style:italic;letter-spacing:2px}
-#stageUp .inner{position:relative;display:flex;flex-direction:column;align-items:center}
-#stageUp.on .inner{animation:bigIn .5s cubic-bezier(.15,1.6,.35,1) forwards}
-
-/* ---------- screens ---------- */
+/* ============ 画面 ============ */
 .screen{position:absolute;inset:0;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:18px;padding:24px;overflow-y:auto;
-  background:radial-gradient(ellipse at 50% 42%,rgba(8,14,40,.52),rgba(2,3,10,.9) 74%)}
+  background:radial-gradient(ellipse at 50% 42%,rgba(10,6,30,.55),rgba(2,3,10,.92) 74%)}
 .screen.hidden{display:none}
-.logo{font-size:clamp(36px,12vw,70px);font-style:italic;font-weight:900;letter-spacing:1px;line-height:.9;text-align:center}
+.logo{font-size:clamp(36px,12vw,70px);font-style:italic;font-weight:900;line-height:.9;text-align:center}
+.logoR{color:#fff;text-shadow:0 0 34px #ff2d3f,0 4px 0 rgba(0,0,0,.5)}
 .logoSub{font-size:11px;letter-spacing:9px;color:#9fb4e8;margin-top:10px;text-align:center}
-.tagline{font-size:13px;letter-spacing:1px;color:#d3dfff;text-align:center;line-height:1.9;font-weight:700;
+.tagline{font-size:14px;letter-spacing:1px;color:#d3dfff;text-align:center;line-height:2;font-weight:700;
   text-shadow:0 2px 8px #000}
-.menuCol{display:flex;flex-direction:column;gap:10px;width:min(300px,86vw)}
-.cta{position:relative;padding:15px 18px;border:none;border-radius:4px;cursor:pointer;
-  font-family:inherit;font-weight:900;font-size:15px;letter-spacing:3px;color:#1a0d00;white-space:nowrap;
+.tagline b{color:#ffd45e}
+.menuCol{display:flex;flex-direction:column;gap:10px;width:min(320px,88vw)}
+.cta{padding:15px 18px;border:none;border-radius:5px;cursor:pointer;font-family:inherit;font-weight:900;
+  font-size:16px;letter-spacing:3px;color:#1a0d00;
   background:linear-gradient(180deg,#ffe89a,#ffb400 55%,#ff7a18);
-  box-shadow:0 0 30px rgba(255,180,0,.6),0 5px 0 #8a4400,inset 0 1px 0 rgba(255,255,255,.6);
-  animation:ctaP 1.5s ease-in-out infinite}
-@keyframes ctaP{0%,100%{transform:translateY(0);box-shadow:0 0 26px rgba(255,180,0,.5),0 5px 0 #8a4400}
-  50%{transform:translateY(-3px);box-shadow:0 0 46px rgba(255,180,0,.85),0 8px 0 #8a4400}}
+  box-shadow:0 0 30px rgba(255,180,0,.6),0 5px 0 #8a4400;animation:ctaP 1.5s ease-in-out infinite}
+@keyframes ctaP{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
 .cta:active{transform:translateY(3px);box-shadow:0 0 20px rgba(255,180,0,.5),0 2px 0 #8a4400}
-.cta small{display:block;font-size:10px;letter-spacing:1px;font-weight:700;opacity:.75;margin-top:3px}
-.btn2{padding:13px 18px;border-radius:4px;cursor:pointer;font-family:inherit;font-weight:800;
-  font-size:13px;letter-spacing:2px;color:#dce6ff;background:rgba(10,16,40,.75);
-  border:1px solid rgba(255,255,255,.28)}
+.cta small,.btn2 small{display:block;font-size:10px;letter-spacing:1px;font-weight:700;opacity:.8;margin-top:3px}
+.btn2{padding:13px 18px;border-radius:5px;cursor:pointer;font-family:inherit;font-weight:800;font-size:14px;
+  letter-spacing:2px;color:#dce6ff;background:rgba(10,16,40,.8);border:1px solid rgba(255,255,255,.3)}
+.btn2 small{color:#8fa4d8}
 .btn2:active{transform:translateY(2px)}
-.btn2 small{display:block;font-size:10px;letter-spacing:1px;font-weight:700;color:#8fa4d8;margin-top:3px}
-.btn2.suggest{border-color:#ffd45e;color:#ffe9a8;box-shadow:0 0 18px rgba(255,212,94,.35)}
-.btnRow{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
-.btnMini{padding:9px 14px;border-radius:3px;cursor:pointer;font-family:inherit;font-weight:800;
-  font-size:10px;letter-spacing:2px;color:#9fb4e8;background:rgba(6,10,26,.7);
-  border:1px solid rgba(255,255,255,.2)}
-.resStat{display:flex;gap:30px;align-items:flex-end}
-.rs{text-align:center}
-.rs .v{font-size:48px;font-style:italic;line-height:1;
-  background:linear-gradient(178deg,#fff,#ffd45e 60%,#ff7a18);-webkit-background-clip:text;background-clip:text;color:transparent}
-.rs .k{font-size:10px;letter-spacing:4px;color:#9fb4e8;margin-top:6px}
-.regret{font-size:13px;letter-spacing:1px;color:#ffb0c6;text-align:center;line-height:1.7;
-  border-top:1px solid rgba(255,255,255,.16);border-bottom:1px solid rgba(255,255,255,.16);padding:11px 16px}
-.detail{font-size:11px;letter-spacing:2px;color:#8fa4d8;text-align:center}
-.hint{font-size:11px;letter-spacing:1px;color:#7e8fbd;text-align:center;line-height:1.9}
-#heat{position:absolute;left:0;right:0;bottom:0;height:28%;z-index:5;pointer-events:none;opacity:0;
-  background:linear-gradient(0deg,var(--acc,#ffb400),transparent);mix-blend-mode:screen;transition:opacity .6s}
+.btnRow{display:flex;gap:10px;justify-content:center}
+.btnMini{padding:10px 16px;border-radius:4px;cursor:pointer;font-family:inherit;font-weight:800;font-size:10px;
+  letter-spacing:2px;color:#9fb4e8;background:rgba(6,10,26,.7);border:1px solid rgba(255,255,255,.22)}
+#nextEnemy{display:flex;flex-direction:column;align-items:center;gap:8px}
+#nextEnemy[hidden]{display:none}
+.nextSil{width:78px;height:78px;border-radius:50%;display:grid;place-items:center;font-size:38px;font-weight:900;
+  color:#2a1040;background:radial-gradient(circle at 40% 30%,#9b6bd8,#2a0f45);
+  box-shadow:0 0 30px rgba(155,107,216,.6);animation:silPulse 1.4s ease-in-out infinite}
+@keyframes silPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+.nextTxt{font-size:12px;letter-spacing:2px;color:#c9b3ff}
+.nextTxt b{color:#ff9ecb}
 
-/* ---------- ホーム画面追加の案内（Safari初回のみ） ---------- */
+/* ============ 補助UI ============ */
 #a2hs{position:absolute;left:0;right:0;bottom:0;z-index:70;
-  padding:0 12px calc(env(safe-area-inset-bottom) + 12px);
-  display:flex;justify-content:center;pointer-events:none}
+  padding:0 12px calc(env(safe-area-inset-bottom) + 12px);display:flex;justify-content:center;pointer-events:none}
 #a2hs[hidden]{display:none}
-.a2hsCard{pointer-events:auto;width:min(360px,94vw);
-  background:rgba(10,14,32,.96);border:1px solid rgba(255,255,255,.26);border-radius:14px;
-  padding:12px 14px;box-shadow:0 12px 40px rgba(0,0,0,.7);
-  animation:a2hsIn .45s cubic-bezier(.2,1.4,.35,1) both}
-@keyframes a2hsIn{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:translateY(0)}}
+.a2hsCard{pointer-events:auto;width:min(360px,94vw);background:rgba(10,14,32,.96);
+  border:1px solid rgba(255,255,255,.26);border-radius:14px;padding:12px 14px;
+  box-shadow:0 12px 40px rgba(0,0,0,.7)}
 .a2hsHead{display:flex;align-items:center;gap:10px}
 .a2hsHead img{border-radius:9px;flex:0 0 auto}
-.a2hsTitle{font-size:13px;letter-spacing:1px;color:#fff}
-.a2hsSub{font-size:10px;letter-spacing:.5px;color:#9fb4e8;margin-top:2px;font-weight:700}
-.a2hsClose{margin-left:auto;width:44px;height:44px;border:none;background:none;cursor:pointer;
-  color:#8fa4d8;font-size:15px;font-family:inherit;flex:0 0 auto}
+.a2hsTitle{font-size:13px;letter-spacing:1px}
+.a2hsSub{font-size:10px;color:#9fb4e8;margin-top:2px;font-weight:700}
+.a2hsClose{margin-left:auto;width:44px;height:44px;border:none;background:none;cursor:pointer;color:#8fa4d8;font-size:15px;font-family:inherit}
 .a2hsSteps{margin:8px 0 2px;padding-left:20px;font-size:11px;line-height:1.9;color:#d3dfff;font-weight:700}
 .a2hsSteps b{color:#ffd45e}
-
-/* ---------- デバッグ（?debug=1 のときだけ） ---------- */
 #debugPanel{position:absolute;left:0;right:0;bottom:0;z-index:80;pointer-events:none;
-  padding:6px 10px calc(env(safe-area-inset-bottom) + 6px);
-  background:rgba(0,0,0,.72);color:#7cff4d;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
-  font-size:9px;line-height:1.55;font-weight:600;letter-spacing:.2px;
-  white-space:pre-wrap;border-top:1px solid rgba(124,255,77,.3)}
+  padding:6px 10px calc(env(safe-area-inset-bottom) + 6px);background:rgba(0,0,0,.75);color:#7cff4d;
+  font-family:ui-monospace,Menlo,monospace;font-size:9px;line-height:1.5;white-space:pre-wrap}
 #debugPanel[hidden]{display:none}
-/* デバッグ表示中はホーム画面案内を押し上げて重ねない */
 body.debug #a2hs{bottom:92px}
 
-/* ---------- 小さい端末（iPhone SE 高さ667 など） ---------- */
+/* ============ 小さい端末 ============ */
 @media (max-height:740px){
-  :root{--topbarH:94px}
-  .streakNum{font-size:46px}
-  #enemy{width:min(38vw,140px)}
-  #enemyWrap{gap:5px}
-  #enemyTell{font-size:11px;padding:5px 12px}
-  .hbtn{max-width:88px}
-  .hbtn .nm{font-size:10px}
-  #controls{padding-top:14px}
-  #bigText{font-size:clamp(32px,11vw,60px);top:54%}
-  #subText{font-size:14px;top:70%}
-  #count{font-size:clamp(64px,20vw,130px)}
-  .handSlot{width:min(32vw,120px)}
+  :root{--topH:46px;--gaugeH:20px;--declH:78px;--ctrlH:112px}
+  #declText{font-size:clamp(17px,5vw,22px);padding:6px 13px}
+  .hbtn{max-width:92px}
+  #goro{max-height:250px}
+  #ghostHand{width:min(32vw,116px)}
   .screen{gap:12px;padding:18px}
-  .logo{font-size:clamp(30px,10vw,52px)}
-  .rs .v{font-size:38px}
-  .tagline{font-size:12px;line-height:1.7}
-  .hint{font-size:10px;line-height:1.7}
-  .cta{padding:12px 16px;font-size:14px}
-  .btn2{padding:10px 16px;font-size:12px}
+  .tagline{font-size:12px;line-height:1.8}
+  #bigText{font-size:clamp(32px,10.5vw,58px)}
 }
 @media (max-height:640px){
-  :root{--topbarH:84px}
-  #enemy{width:min(32vw,112px)}
-  .streakNum{font-size:40px}
+  :root{--topH:42px;--gaugeH:18px;--declH:70px;--ctrlH:100px}
+  #goro{max-height:200px}
+  .pips i{width:22px;height:13px}
 }

@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no,maximum-scale=1">
+<title>JANKEN RUSH — ジャンケンを、ここまでアツく。</title>
+<meta name="description" content="ルールは世界一シンプル。体験は世界一派手。連勝するほどステージが進化する、演出だけで殴りにくるジャンケン。">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#12061f">
+
+<!-- iPhone ホーム画面（standalone）対応 -->
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="JANKEN">
+<link rel="apple-touch-icon" href="./icons/icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+<link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="JANKEN RUSH">
+<meta property="og:description" content="ジャンケンを、ここまでアツく。">
+<meta property="og:image" content="./icons/icon-512.png">
+
+<link rel="stylesheet" href="./src/styles.css?v=0.2.2">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <clipPath id="topClip" clipPathUnits="userSpaceOnUse"><rect x="0" y="0" width="160" height="74"/></clipPath>
+</defs></svg>
+
+<div id="app">
+  <canvas id="bg"></canvas>
+  <div id="heat"></div>
+
+  <div id="topbar">
+    <div id="hud">
+      <div class="streakBox">
+        <div class="streakNum" id="streakNum">0</div>
+        <div class="streakLbl">連 勝</div>
+      </div>
+      <div class="hudRight">
+        <div id="stageName">通常ステージ</div>
+        <div class="badge">BEST <b id="bestNum">0</b></div>
+        <div id="modeBadge"></div>
+      </div>
+    </div>
+    <div id="tension"><div id="tensionFill"></div></div>
+    <div id="tensionRow"><div id="chainPips"></div><div id="tensionLbl"></div></div>
+  </div>
+
+  <div id="ui">
+    <div id="arena">
+      <div id="preview"></div>
+      <div id="enemyWrap">
+        <div id="enemy">
+          <div class="enemyGlow"></div>
+          <div id="foreAura"></div>
+          <div class="orbit"><i></i><i></i><i></i><i></i></div>
+          <div class="enemyBody">
+            <div class="horn l"></div><div class="horn r"></div>
+            <div class="visor"></div>
+            <div class="eyes"><div class="eye"></div><div class="eye"></div></div>
+            <div class="mouth"></div>
+          </div>
+        </div>
+        <div id="enemyName">—</div>
+        <div id="enemyHp"><i></i><i></i><i></i></div>
+        <div id="enemyState"></div>
+        <div id="enemyTell">—</div>
+      </div>
+    </div>
+
+    <div id="controls">
+      <button class="hbtn rock" data-h="rock"><div class="disc"><div class="ring"></div><div class="ic"></div></div><div class="nm">グー</div></button>
+      <button class="hbtn scissors" data-h="scissors"><div class="disc"><div class="ring"></div><div class="ic"></div></div><div class="nm">チョキ</div></button>
+      <button class="hbtn paper" data-h="paper"><div class="disc"><div class="ring"></div><div class="ic"></div></div><div class="nm">パー</div></button>
+    </div>
+  </div>
+
+  <div id="battleScrim"></div>
+  <div id="reveal">
+    <div class="handSlot e" id="handE"></div>
+    <div class="handSlot p" id="handP"></div>
+    <div id="vsMark">VS</div>
+  </div>
+
+  <div id="center">
+    <div id="bigText"></div>
+    <div id="subText"></div>
+    <div id="count"></div>
+  </div>
+
+  <div id="yakumono"></div>
+  <div id="cutin"><div class="cutBand"></div><div class="cutText">神 手</div></div>
+  <div id="freeze">
+    <svg viewBox="0 0 400 800" preserveAspectRatio="none"><g id="cracks"></g></svg>
+    <div id="freezeTxt">FREEZE</div>
+  </div>
+  <div id="stageUp">
+    <div class="band"></div>
+    <div class="inner"><div class="t1">STAGE UP</div><div class="t2" id="stageUpName"></div></div>
+  </div>
+
+  <canvas id="fx"></canvas>
+  <div class="vignette"></div>
+  <div class="scan"></div>
+  <div class="grain"></div>
+  <div id="tintFlash"></div>
+
+  <!-- ================= TITLE ================= -->
+  <div class="screen" id="titleScreen">
+    <div>
+      <div class="logo"><span class="rbText">JANKEN</span><br><span style="color:#fff;text-shadow:0 0 34px #ff2d3f,0 4px 0 rgba(0,0,0,.5)">RUSH</span></div>
+      <div class="logoSub">ジャンケンラッシュ</div>
+    </div>
+    <div class="tagline">ジャンケンを、ここまでアツく。<br>ルールは世界一シンプル。体験は世界一派手。</div>
+
+    <div class="menuCol">
+      <button class="cta" id="btnFair">は じ め る<small>FAIR PLAY ／ 敵AIと公平に勝負する</small></button>
+      <button class="btn2" id="btnTraining">訓 練 戦<small>相手の手を見てから選ぶ練習。戦績に残らない</small></button>
+      <button class="btn2" id="btnShowcase">演 出 デ モ<small>SHOWCASE ／ 勝敗は台本。戦績に残らない</small></button>
+    </div>
+
+    <div class="btnRow">
+      <button class="btnMini" id="btnFx">EFFECT HIGH</button>
+    </div>
+    <div class="hint">敵のセリフと構えには癖が出る<br>読み切れば勝率が上がる</div>
+  </div>
+
+  <!-- ================= RESULT ================= -->
+  <div class="screen hidden" id="resultScreen">
+    <div class="logo" style="font-size:clamp(24px,8vw,48px);color:#fff">連勝ストップ</div>
+    <div class="resStat">
+      <div class="rs"><div class="v" id="rStreak">0</div><div class="k">STREAK</div></div>
+      <div class="rs"><div class="v" id="rBest">0</div><div class="k">BEST</div></div>
+    </div>
+    <div class="detail" id="resultDetail"></div>
+    <div class="regret" id="regret"></div>
+    <div class="menuCol">
+      <button class="cta" id="retryBtn">R E T R Y</button>
+      <button class="btnMini" id="backTitle">タイトルへ</button>
+    </div>
+  </div>
+
+  <!-- ============ ホーム画面追加の案内（Safari初回のみ） ============ -->
+  <div id="a2hs" hidden>
+    <div class="a2hsCard">
+      <div class="a2hsHead">
+        <img src="./icons/icon-180.png" alt="" width="40" height="40">
+        <div>
+          <div class="a2hsTitle">ホーム画面に追加</div>
+          <div class="a2hsSub">アプリのように全画面で遊べます</div>
+        </div>
+        <button class="a2hsClose" id="a2hsClose" aria-label="閉じる">✕</button>
+      </div>
+      <ol class="a2hsSteps">
+        <li>下の <b>共有ボタン</b> を押す</li>
+        <li><b>ホーム画面に追加</b> を選ぶ</li>
+        <li>右上の <b>追加</b> を押す</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- ============ デバッグ（?debug=1 のときだけ表示） ============ -->
+  <div id="debugPanel" hidden></div>
+
+  <!-- ============ SHOWCASE / TRAINING 終了 ============ -->
+  <div class="screen hidden" id="showcaseEnd">
+    <div class="logo" style="font-size:clamp(24px,8vw,44px);color:#fff" id="showcaseEndTitle">SHOWCASE 終了</div>
+    <div class="tagline" id="showcaseEndBody"></div>
+    <div class="menuCol">
+      <button class="cta" id="showcaseEndBtn">本 番 へ<small>FAIR PLAY で勝負する</small></button>
+      <button class="btnMini" id="showcaseEndBack">タイトルへ</button>
+    </div>
+  </div>
+</div>
+
+<!-- v= がこのアプリのバージョン。更新時はここだけ上げれば
+     boot.js → game.js → core/view.js まで新しいURLになり、確実に届く。 -->
+<script type="module" src="./src/boot.js?v=0.2.2"></script>
+</body>
+</html>

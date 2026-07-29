@@ -3,12 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no,maximum-scale=1">
-<title>JANKEN RUSH — ジャンケンを、ここまでアツく。</title>
-<meta name="description" content="ルールは世界一シンプル。体験は世界一派手。連勝するほどステージが進化する、演出だけで殴りにくるジャンケン。">
+<title>JANKEN RUSH — 仮面を砕け</title>
+<meta name="description" content="言葉は嘘をつく。光る手は嘘をつかない。3回勝って敵の仮面を砕くジャンケンバトル。">
 <meta name="color-scheme" content="dark">
 <meta name="theme-color" content="#12061f">
 
-<!-- iPhone ホーム画面（standalone）対応 -->
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -20,12 +19,12 @@
 
 <meta property="og:type" content="website">
 <meta property="og:title" content="JANKEN RUSH">
-<meta property="og:description" content="ジャンケンを、ここまでアツく。">
+<meta property="og:description" content="言葉は嘘をつく。光る手は嘘をつかない。">
 <meta property="og:image" content="./icons/icon-512.png">
 
-<link rel="stylesheet" href="./src/styles.css?v=0.2.2">
+<link rel="stylesheet" href="./src/styles.css?v=0.3.0">
 </head>
-<body>
+<body class="menu">
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
   <clipPath id="topClip" clipPathUnits="userSpaceOnUse"><rect x="0" y="0" width="160" height="74"/></clipPath>
 </defs></svg>
@@ -34,151 +33,107 @@
   <canvas id="bg"></canvas>
   <div id="heat"></div>
 
+  <!-- ============ 上部：仮面とシールドだけ ============ -->
   <div id="topbar">
-    <div id="hud">
-      <div class="streakBox">
-        <div class="streakNum" id="streakNum">0</div>
-        <div class="streakLbl">連 勝</div>
-      </div>
-      <div class="hudRight">
-        <div id="stageName">通常ステージ</div>
-        <div class="badge">BEST <b id="bestNum">0</b></div>
-        <div id="modeBadge"></div>
-      </div>
+    <div class="side enemySide">
+      <div class="sideName" id="enemyName">GORO</div>
+      <div class="pips" id="maskPips"><i></i><i></i><i></i></div>
     </div>
-    <div id="tension"><div id="tensionFill"></div></div>
-    <div id="tensionRow"><div id="chainPips"></div><div id="tensionLbl"></div></div>
-  </div>
-
-  <div id="ui">
-    <div id="arena">
-      <div id="preview"></div>
-      <div id="enemyWrap">
-        <div id="enemy">
-          <div class="enemyGlow"></div>
-          <div id="foreAura"></div>
-          <div class="orbit"><i></i><i></i><i></i><i></i></div>
-          <div class="enemyBody">
-            <div class="horn l"></div><div class="horn r"></div>
-            <div class="visor"></div>
-            <div class="eyes"><div class="eye"></div><div class="eye"></div></div>
-            <div class="mouth"></div>
-          </div>
-        </div>
-        <div id="enemyName">—</div>
-        <div id="enemyHp"><i></i><i></i><i></i></div>
-        <div id="enemyState"></div>
-        <div id="enemyTell">—</div>
-      </div>
-    </div>
-
-    <div id="controls">
-      <button class="hbtn rock" data-h="rock"><div class="disc"><div class="ring"></div><div class="ic"></div></div><div class="nm">グー</div></button>
-      <button class="hbtn scissors" data-h="scissors"><div class="disc"><div class="ring"></div><div class="ic"></div></div><div class="nm">チョキ</div></button>
-      <button class="hbtn paper" data-h="paper"><div class="disc"><div class="ring"></div><div class="ic"></div></div><div class="nm">パー</div></button>
+    <div class="side youSide">
+      <div class="sideName">YOU</div>
+      <div class="pips shield" id="shieldPips"><i></i><i></i><i></i></div>
     </div>
   </div>
 
-  <div id="battleScrim"></div>
-  <div id="reveal">
-    <div class="handSlot e" id="handE"></div>
-    <div class="handSlot p" id="handP"></div>
-    <div id="vsMark">VS</div>
+  <div id="gauges">
+    <div class="gauge clash"><span class="gLabel">CLASH</span><div class="gBar"><i id="clashFill"></i></div></div>
+    <div class="gauge yaku"><span class="gLabel">役物</span><div class="gBar"><i id="yakuFill"></i></div></div>
   </div>
 
-  <div id="center">
-    <div id="bigText"></div>
-    <div id="subText"></div>
-    <div id="count"></div>
+  <!-- ============ 中央：敵 ============ -->
+  <div id="stage">
+    <div id="history" aria-label="相手の直近の手"></div>
+    <div id="goroWrap"><div id="goro"></div></div>
+    <div id="ghostHand" aria-hidden="true"></div>
+    <div id="coach"></div>
   </div>
 
+  <!-- ============ 宣言と制限時間 ============ -->
+  <div id="declare">
+    <div id="declText">—</div>
+    <div id="timeBar"><i id="timeFill"></i></div>
+  </div>
+
+  <!-- ============ 下部：3つの手 ============ -->
+  <div id="controls">
+    <button class="hbtn rock" data-h="rock"><span class="disc"><span class="ring"></span><span class="ic"></span></span><span class="nm">グー</span></button>
+    <button class="hbtn scissors" data-h="scissors"><span class="disc"><span class="ring"></span><span class="ic"></span></span><span class="nm">チョキ</span></button>
+    <button class="hbtn paper" data-h="paper"><span class="disc"><span class="ring"></span><span class="ic"></span></span><span class="nm">パー</span></button>
+  </div>
+
+  <!-- ============ 決着表示 ============ -->
+  <div id="clashLayer">
+    <div class="hand ph" id="handP"></div>
+    <div class="hand eh" id="handE"></div>
+  </div>
+  <div id="center"><div id="bigText"></div><div id="subText"></div></div>
+
+  <!-- ============ 役物（自分で落とす） ============ -->
+  <div id="finisher" hidden>
+    <div id="finText">下 へ 引 け</div>
+    <div id="finArrow">▼<br>▼<br>▼</div>
+  </div>
   <div id="yakumono"></div>
-  <div id="cutin"><div class="cutBand"></div><div class="cutText">神 手</div></div>
-  <div id="freeze">
-    <svg viewBox="0 0 400 800" preserveAspectRatio="none"><g id="cracks"></g></svg>
-    <div id="freezeTxt">FREEZE</div>
-  </div>
-  <div id="stageUp">
-    <div class="band"></div>
-    <div class="inner"><div class="t1">STAGE UP</div><div class="t2" id="stageUpName"></div></div>
-  </div>
+
+  <div id="rushBanner"><div class="rbInner"><div class="rb1">3 CLASH</div><div class="rb2">CLASH RUSH</div></div></div>
+  <div id="freeze"><svg viewBox="0 0 400 800" preserveAspectRatio="none"><g id="cracks"></g></svg></div>
 
   <canvas id="fx"></canvas>
   <div class="vignette"></div>
   <div class="scan"></div>
-  <div class="grain"></div>
   <div id="tintFlash"></div>
 
-  <!-- ================= TITLE ================= -->
+  <!-- ============ タイトル ============ -->
   <div class="screen" id="titleScreen">
     <div>
-      <div class="logo"><span class="rbText">JANKEN</span><br><span style="color:#fff;text-shadow:0 0 34px #ff2d3f,0 4px 0 rgba(0,0,0,.5)">RUSH</span></div>
+      <div class="logo"><span class="rbText">JANKEN</span><br><span class="logoR">RUSH</span></div>
       <div class="logoSub">ジャンケンラッシュ</div>
     </div>
-    <div class="tagline">ジャンケンを、ここまでアツく。<br>ルールは世界一シンプル。体験は世界一派手。</div>
-
+    <div class="tagline">言葉は 嘘をつく。<br><b>光る手</b> は 嘘をつかない。</div>
     <div class="menuCol">
-      <button class="cta" id="btnFair">は じ め る<small>FAIR PLAY ／ 敵AIと公平に勝負する</small></button>
-      <button class="btn2" id="btnTraining">訓 練 戦<small>相手の手を見てから選ぶ練習。戦績に残らない</small></button>
-      <button class="btn2" id="btnShowcase">演 出 デ モ<small>SHOWCASE ／ 勝敗は台本。戦績に残らない</small></button>
+      <button class="cta" id="btnTutorial">は じ め て 遊 ぶ<small>60秒で全部わかる</small></button>
+      <button class="btn2" id="btnFight">G O R O と 戦 う<small>3回勝てば撃破。3回負けたら終わり</small></button>
     </div>
-
-    <div class="btnRow">
-      <button class="btnMini" id="btnFx">EFFECT HIGH</button>
-    </div>
-    <div class="hint">敵のセリフと構えには癖が出る<br>読み切れば勝率が上がる</div>
+    <div class="btnRow"><button class="btnMini" id="btnFx">EFFECT HIGH</button></div>
   </div>
 
-  <!-- ================= RESULT ================= -->
+  <!-- ============ 決着画面 ============ -->
   <div class="screen hidden" id="resultScreen">
-    <div class="logo" style="font-size:clamp(24px,8vw,48px);color:#fff">連勝ストップ</div>
-    <div class="resStat">
-      <div class="rs"><div class="v" id="rStreak">0</div><div class="k">STREAK</div></div>
-      <div class="rs"><div class="v" id="rBest">0</div><div class="k">BEST</div></div>
+    <div id="resTitle" class="logo">撃 破</div>
+    <div id="resBody" class="tagline"></div>
+    <div id="nextEnemy" hidden>
+      <div class="nextSil">?</div>
+      <div class="nextTxt">次の敵は <b>嘘をつく</b></div>
     </div>
-    <div class="detail" id="resultDetail"></div>
-    <div class="regret" id="regret"></div>
     <div class="menuCol">
-      <button class="cta" id="retryBtn">R E T R Y</button>
-      <button class="btnMini" id="backTitle">タイトルへ</button>
+      <button class="cta" id="btnAgain">も う 一 度</button>
+      <button class="btnMini" id="btnTitle">タイトルへ</button>
     </div>
   </div>
 
-  <!-- ============ ホーム画面追加の案内（Safari初回のみ） ============ -->
   <div id="a2hs" hidden>
     <div class="a2hsCard">
       <div class="a2hsHead">
         <img src="./icons/icon-180.png" alt="" width="40" height="40">
-        <div>
-          <div class="a2hsTitle">ホーム画面に追加</div>
-          <div class="a2hsSub">アプリのように全画面で遊べます</div>
-        </div>
+        <div><div class="a2hsTitle">ホーム画面に追加</div><div class="a2hsSub">アプリのように全画面で遊べます</div></div>
         <button class="a2hsClose" id="a2hsClose" aria-label="閉じる">✕</button>
       </div>
-      <ol class="a2hsSteps">
-        <li>下の <b>共有ボタン</b> を押す</li>
-        <li><b>ホーム画面に追加</b> を選ぶ</li>
-        <li>右上の <b>追加</b> を押す</li>
-      </ol>
+      <ol class="a2hsSteps"><li>下の <b>共有ボタン</b> を押す</li><li><b>ホーム画面に追加</b> を選ぶ</li><li>右上の <b>追加</b> を押す</li></ol>
     </div>
   </div>
-
-  <!-- ============ デバッグ（?debug=1 のときだけ表示） ============ -->
   <div id="debugPanel" hidden></div>
-
-  <!-- ============ SHOWCASE / TRAINING 終了 ============ -->
-  <div class="screen hidden" id="showcaseEnd">
-    <div class="logo" style="font-size:clamp(24px,8vw,44px);color:#fff" id="showcaseEndTitle">SHOWCASE 終了</div>
-    <div class="tagline" id="showcaseEndBody"></div>
-    <div class="menuCol">
-      <button class="cta" id="showcaseEndBtn">本 番 へ<small>FAIR PLAY で勝負する</small></button>
-      <button class="btnMini" id="showcaseEndBack">タイトルへ</button>
-    </div>
-  </div>
 </div>
 
-<!-- v= がこのアプリのバージョン。更新時はここだけ上げれば
-     boot.js → game.js → core/view.js まで新しいURLになり、確実に届く。 -->
-<script type="module" src="./src/boot.js?v=0.2.2"></script>
+<script type="module" src="./src/boot.js?v=0.3.0"></script>
 </body>
 </html>
