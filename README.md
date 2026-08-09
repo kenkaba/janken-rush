@@ -89,15 +89,14 @@ Service Worker を使っていないので、古い版が居座り続ける事�
 
 ### ローカルで動かす
 
+最初に自動検査を実行します。
+
 ```bash
-python3 -c "import os
-from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
-os.chdir('.')
-class H(SimpleHTTPRequestHandler):
-    def end_headers(self):
-        self.send_header('Cache-Control','no-store, max-age=0')
-        SimpleHTTPRequestHandler.end_headers(self)
-ThreadingHTTPServer(('127.0.0.1',5177),H).serve_forever()"
+npm test
+```
+
+```bash
+npm run serve
 ```
 
 ESモジュール構成のため `file://` では動かない。

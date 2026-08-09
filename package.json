@@ -1,0 +1,11 @@
+{
+  "name": "janken-rush",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node verify.mjs",
+    "serve": "python3 -m http.server 8000"
+  }
+}
+
