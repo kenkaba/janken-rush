@@ -3,12 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no,maximum-scale=1">
-<meta name="jr-build" content="2026-08-11-endless-v0.4.0">
-<title>JANKEN RUSH — ENDLESS</title>
-<meta name="description" content="終わらないジャンケンバトル。相手の手を見切って連破を伸ばせ。">
+<meta name="jr-build" content="2026-08-11-reflex-v0.5.0">
+<title>JANKEN RUSH — REFLEX</title>
+<meta name="description" content="3ミスするまで何回続けられる？ 相手の手を見て、勝てる手を瞬時に押す反射神経スコアアタック。">
 <meta name="color-scheme" content="dark">
 <meta name="theme-color" content="#12061f">
-
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -17,117 +16,54 @@
 <link rel="apple-touch-icon" href="./icons/icon-180.png">
 <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
 <link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
-
 <meta property="og:type" content="website">
 <meta property="og:title" content="JANKEN RUSH">
-<meta property="og:description" content="終わらないジャンケンバトル。勝つほど速くなる。">
+<meta property="og:description" content="3ミスするまで何回続けられる？ 30の壁、100の世界。">
 <meta property="og:image" content="./icons/icon-512.png">
-
-<link rel="stylesheet" href="./src/styles.css?v=0.4.0">
+<link rel="stylesheet" href="./src/styles.css?v=0.5.0">
 </head>
 <body class="menu">
-<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
-  <clipPath id="topClip" clipPathUnits="userSpaceOnUse"><rect x="0" y="0" width="160" height="74"/></clipPath>
-</defs></svg>
-
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><clipPath id="topClip" clipPathUnits="userSpaceOnUse"><rect x="0" y="0" width="160" height="74"/></clipPath></defs></svg>
 <div id="app">
   <canvas id="bg"></canvas>
   <div id="heat"></div>
-
-  <div id="topbar">
-    <div class="side enemySide">
-      <div class="sideName" id="enemyName">GORO</div>
-      <div class="pips" id="maskPips"><i></i><i></i><i></i></div>
-    </div>
-    <div class="side youSide">
-      <div class="sideName">YOU</div>
-      <div class="pips shield" id="shieldPips"><i></i><i></i><i></i></div>
-    </div>
-  </div>
-
-  <div id="gauges">
-    <div class="gauge clash"><span class="gLabel">CLASH</span><div class="gBar"><i id="clashFill"></i></div></div>
-    <div class="gauge yaku"><span class="gLabel">役物</span><div class="gBar"><i id="yakuFill"></i></div></div>
-  </div>
-
-  <div id="stage">
-    <div id="history" aria-label="相手の直近の手"></div>
-    <div id="goroWrap"><div id="goro"></div></div>
-    <div id="ghostHand" aria-hidden="true"></div>
-    <div id="coach"></div>
-  </div>
-
-  <div id="declare">
-    <div id="declText">—</div>
-    <div id="timeBar"><i id="timeFill"></i></div>
-  </div>
-
+  <div id="topbar"><div class="side enemySide"><div class="sideName" id="enemyName">GORO</div><div class="pips" id="maskPips"><i></i><i></i><i></i></div></div><div class="side youSide"><div class="sideName">YOU</div><div class="pips shield" id="shieldPips"><i></i><i></i><i></i></div></div></div>
+  <div id="gauges"><div class="gauge clash"><span class="gLabel">CLASH</span><div class="gBar"><i id="clashFill"></i></div></div><div class="gauge yaku"><span class="gLabel">役物</span><div class="gBar"><i id="yakuFill"></i></div></div></div>
+  <div id="stage"><div id="history"></div><div id="goroWrap"><div id="goro"></div></div><div id="ghostHand" aria-hidden="true"></div><div id="coach"></div></div>
+  <div id="declare"><div id="declText">READY</div><div id="timeBar"><i id="timeFill"></i></div></div>
   <div id="controls">
     <button class="hbtn rock" data-h="rock"><span class="disc"><span class="ring"></span><span class="ic"></span></span><span class="nm">グー</span></button>
     <button class="hbtn scissors" data-h="scissors"><span class="disc"><span class="ring"></span><span class="ic"></span></span><span class="nm">チョキ</span></button>
     <button class="hbtn paper" data-h="paper"><span class="disc"><span class="ring"></span><span class="ic"></span></span><span class="nm">パー</span></button>
   </div>
-
-  <div id="clashLayer">
-    <div class="hand ph" id="handP"></div>
-    <div class="hand eh" id="handE"></div>
-  </div>
+  <div id="clashLayer"><div class="hand ph" id="handP"></div><div class="hand eh" id="handE"></div></div>
   <div id="center"><div id="bigText"></div><div id="subText"></div></div>
-
-  <div id="finisher" hidden>
-    <div id="finText">下 へ 引 け</div>
-    <div id="finArrow">▼<br>▼<br>▼</div>
-  </div>
+  <div id="finisher" hidden><div id="finText">下 へ 引 け</div><div id="finArrow">▼<br>▼<br>▼</div></div>
   <div id="yakumono"></div>
-
-  <div id="rushBanner"><div class="rbInner"><div class="rb1">3 CLASH</div><div class="rb2">CLASH RUSH</div></div></div>
+  <div id="rushBanner"><div class="rbInner"><div class="rb1">RUSH</div><div class="rb2">JANKEN RUSH</div></div></div>
   <div id="freeze"><svg viewBox="0 0 400 800" preserveAspectRatio="none"><g id="cracks"></g></svg></div>
-
-  <canvas id="fx"></canvas>
-  <div class="vignette"></div>
-  <div class="scan"></div>
-  <div id="tintFlash"></div>
+  <canvas id="fx"></canvas><div class="vignette"></div><div class="scan"></div><div id="tintFlash"></div>
 
   <div class="screen" id="titleScreen">
-    <div>
-      <div class="logo"><span class="rbText">JANKEN</span><br><span class="logoR">RUSH</span></div>
-      <div class="logoSub">ジャンケンラッシュ</div>
-    </div>
-    <div class="tagline">相手の手を見切れ。<br><b>勝つほど速くなる。</b></div>
+    <div><div class="logo"><span class="rbText">JANKEN</span><br><span class="logoR">RUSH</span></div><div class="logoSub">REFLEX SCORE ATTACK</div></div>
+    <div class="tagline"><b>相手の手に勝てる手を押す。</b><br>3ミスで終了。どこまで行ける？</div>
     <div class="menuCol">
-      <button class="cta" id="btnTutorial">は じ め て 遊 ぶ<small>60秒で全部わかる</small></button>
-      <button class="btn2" id="btnFight">エ ン ド レ ス で 戦 う<small>倒しても終わらない。勝つほど速くなる</small></button>
+      <button class="cta" id="btnFight">S T A R T<small>30の壁を越えろ。100は反射神経の領域。</small></button>
+      <button class="btn2" id="btnTutorial">ルール確認<small>相手の手を見て、勝てる手を押すだけ</small></button>
     </div>
     <div class="btnRow"><button class="btnMini" id="btnFx">EFFECT HIGH</button></div>
   </div>
 
   <div class="screen hidden" id="resultScreen">
-    <div id="resTitle" class="logo">撃 破</div>
+    <div id="resTitle" class="logo">SCORE</div>
     <div id="resBody" class="tagline"></div>
-    <div id="nextEnemy" hidden>
-      <div class="nextSil">?</div>
-      <div class="nextTxt">次のWAVEへ</div>
-    </div>
-    <div class="menuCol">
-      <button class="cta" id="btnAgain">N E X T</button>
-      <button class="btnMini" id="btnTitle">タイトルへ</button>
-    </div>
+    <div id="nextEnemy" hidden><div class="nextSil">?</div><div class="nextTxt"></div></div>
+    <div class="menuCol"><button class="cta" id="btnAgain">も う 一 度</button><button class="btnMini" id="btnTitle">タイトルへ</button></div>
   </div>
 
-  <div id="a2hs" hidden>
-    <div class="a2hsCard">
-      <div class="a2hsHead">
-        <img src="./icons/icon-180.png" alt="" width="40" height="40">
-        <div><div class="a2hsTitle">ホーム画面に追加</div><div class="a2hsSub">アプリのように全画面で遊べます</div></div>
-        <button class="a2hsClose" id="a2hsClose" aria-label="閉じる">✕</button>
-      </div>
-      <ol class="a2hsSteps"><li>下の <b>共有ボタン</b> を押す</li><li><b>ホーム画面に追加</b> を選ぶ</li><li>右上の <b>追加</b> を押す</li></ol>
-    </div>
-  </div>
+  <div id="a2hs" hidden><div class="a2hsCard"><div class="a2hsHead"><img src="./icons/icon-180.png" alt="" width="40" height="40"><div><div class="a2hsTitle">ホーム画面に追加</div><div class="a2hsSub">アプリのように全画面で遊べます</div></div><button class="a2hsClose" id="a2hsClose" aria-label="閉じる">✕</button></div><ol class="a2hsSteps"><li>下の <b>共有ボタン</b> を押す</li><li><b>ホーム画面に追加</b> を選ぶ</li><li>右上の <b>追加</b> を押す</li></ol></div></div>
   <div id="debugPanel" hidden></div>
 </div>
-
-<script type="module" src="./src/boot.js?v=0.4.0"></script>
-<script type="module" src="./src/endless.js?v=0.4.0"></script>
+<script type="module" src="./src/boot.js?v=0.5.0"></script>
 </body>
 </html>
