@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no,maximum-scale=1">
-<meta name="jr-build" content="2026-08-09-gpt-ready">
-<title>JANKEN RUSH — 仮面を砕け</title>
-<meta name="description" content="言葉は嘘をつく。光る手は嘘をつかない。3回勝って敵の仮面を砕くジャンケンバトル。">
+<meta name="jr-build" content="2026-08-11-endless-v0.4.0">
+<title>JANKEN RUSH — ENDLESS</title>
+<meta name="description" content="終わらないジャンケンバトル。相手の手を見切って連破を伸ばせ。">
 <meta name="color-scheme" content="dark">
 <meta name="theme-color" content="#12061f">
 
@@ -20,10 +20,10 @@
 
 <meta property="og:type" content="website">
 <meta property="og:title" content="JANKEN RUSH">
-<meta property="og:description" content="言葉は嘘をつく。光る手は嘘をつかない。">
+<meta property="og:description" content="終わらないジャンケンバトル。勝つほど速くなる。">
 <meta property="og:image" content="./icons/icon-512.png">
 
-<link rel="stylesheet" href="./src/styles.css?v=0.3.0">
+<link rel="stylesheet" href="./src/styles.css?v=0.4.0">
 </head>
 <body class="menu">
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
@@ -34,7 +34,6 @@
   <canvas id="bg"></canvas>
   <div id="heat"></div>
 
-  <!-- ============ 上部：仮面とシールドだけ ============ -->
   <div id="topbar">
     <div class="side enemySide">
       <div class="sideName" id="enemyName">GORO</div>
@@ -51,7 +50,6 @@
     <div class="gauge yaku"><span class="gLabel">役物</span><div class="gBar"><i id="yakuFill"></i></div></div>
   </div>
 
-  <!-- ============ 中央：敵 ============ -->
   <div id="stage">
     <div id="history" aria-label="相手の直近の手"></div>
     <div id="goroWrap"><div id="goro"></div></div>
@@ -59,27 +57,23 @@
     <div id="coach"></div>
   </div>
 
-  <!-- ============ 宣言と制限時間 ============ -->
   <div id="declare">
     <div id="declText">—</div>
     <div id="timeBar"><i id="timeFill"></i></div>
   </div>
 
-  <!-- ============ 下部：3つの手 ============ -->
   <div id="controls">
     <button class="hbtn rock" data-h="rock"><span class="disc"><span class="ring"></span><span class="ic"></span></span><span class="nm">グー</span></button>
     <button class="hbtn scissors" data-h="scissors"><span class="disc"><span class="ring"></span><span class="ic"></span></span><span class="nm">チョキ</span></button>
     <button class="hbtn paper" data-h="paper"><span class="disc"><span class="ring"></span><span class="ic"></span></span><span class="nm">パー</span></button>
   </div>
 
-  <!-- ============ 決着表示 ============ -->
   <div id="clashLayer">
     <div class="hand ph" id="handP"></div>
     <div class="hand eh" id="handE"></div>
   </div>
   <div id="center"><div id="bigText"></div><div id="subText"></div></div>
 
-  <!-- ============ 役物（自分で落とす） ============ -->
   <div id="finisher" hidden>
     <div id="finText">下 へ 引 け</div>
     <div id="finArrow">▼<br>▼<br>▼</div>
@@ -94,30 +88,28 @@
   <div class="scan"></div>
   <div id="tintFlash"></div>
 
-  <!-- ============ タイトル ============ -->
   <div class="screen" id="titleScreen">
     <div>
       <div class="logo"><span class="rbText">JANKEN</span><br><span class="logoR">RUSH</span></div>
       <div class="logoSub">ジャンケンラッシュ</div>
     </div>
-    <div class="tagline">言葉は 嘘をつく。<br><b>光る手</b> は 嘘をつかない。</div>
+    <div class="tagline">相手の手を見切れ。<br><b>勝つほど速くなる。</b></div>
     <div class="menuCol">
       <button class="cta" id="btnTutorial">は じ め て 遊 ぶ<small>60秒で全部わかる</small></button>
-      <button class="btn2" id="btnFight">G O R O と 戦 う<small>3回勝てば撃破。3回負けたら終わり</small></button>
+      <button class="btn2" id="btnFight">エ ン ド レ ス で 戦 う<small>倒しても終わらない。勝つほど速くなる</small></button>
     </div>
     <div class="btnRow"><button class="btnMini" id="btnFx">EFFECT HIGH</button></div>
   </div>
 
-  <!-- ============ 決着画面 ============ -->
   <div class="screen hidden" id="resultScreen">
     <div id="resTitle" class="logo">撃 破</div>
     <div id="resBody" class="tagline"></div>
     <div id="nextEnemy" hidden>
       <div class="nextSil">?</div>
-      <div class="nextTxt">次の敵は <b>嘘をつく</b></div>
+      <div class="nextTxt">次のWAVEへ</div>
     </div>
     <div class="menuCol">
-      <button class="cta" id="btnAgain">も う 一 度</button>
+      <button class="cta" id="btnAgain">N E X T</button>
       <button class="btnMini" id="btnTitle">タイトルへ</button>
     </div>
   </div>
@@ -135,6 +127,7 @@
   <div id="debugPanel" hidden></div>
 </div>
 
-<script type="module" src="./src/boot.js?v=0.3.0"></script>
+<script type="module" src="./src/boot.js?v=0.4.0"></script>
+<script type="module" src="./src/endless.js?v=0.4.0"></script>
 </body>
 </html>
